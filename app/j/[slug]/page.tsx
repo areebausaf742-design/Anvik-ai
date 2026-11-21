@@ -10,7 +10,7 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const row = store.bySlug(slug);
-  if (!row) return { title: "नहीं मिला" };
+  if (!row) return { title: "Not found" };
   const question = store.publicWithQuestions().find((x) => x.answer.id === row.id)?.question ?? row.slug;
   /* §4.3: OG text preview, deliberately no image — a text preview forwards
      like a person sharing something useful; a branded card forwards like ads. */
@@ -31,19 +31,19 @@ export default async function PublicAnswer({ params }: Params) {
   const row = store.bySlug(slug);
   if (!row) notFound();
   const question = store.publicWithQuestions().find((x) => x.answer.id === row.id)?.question ?? row.slug;
-  const when = new Date(row.publishedAt).toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
+  const when = new Date(row.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <article className="pub">
       <h1 className="q-head">{question}</h1>
       <div className="a-body">{row.body}</div>
       <p className="meta-line">
-        {when} · {langLabel(row.lang)} · सार्वजनिक जवाब
+        {when} · answered in {langLabel(row.lang)} · public answer
       </p>
       <div className="pub-cta">
-        <p>अन्विक — हिंदी में कोई भी सवाल पूछें</p>
+        <p>Anvik — ask anything, plainly</p>
         <a className="ask-btn" style={{ display: "inline-flex", alignItems: "center" }} href="/">
-          पूछें
+          Ask
         </a>
       </div>
     </article>

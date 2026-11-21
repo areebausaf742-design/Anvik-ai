@@ -3,20 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/**
- * Chrome = wordmark + one link (§3.7 translation table).
- * The saffron stroke under the wordmark is home-only (§3.3 rule 1).
- */
+/** Chrome = wordmark + one link. Saffron stroke under the wordmark, home only. */
 export default function Header() {
   const pathname = usePathname();
   const home = pathname === "/";
   return (
     <header className="site-head" data-home={home ? "1" : undefined}>
-      <Link className="wordmark" href="/" aria-label="anvik — होम">
+      <Link className="wordmark" href="/" aria-label="anvik — home">
         anvik
       </Link>
       <nav>
-        <Link href="/h">इतिहास</Link>
+        <Link href="/h">History</Link>
       </nav>
     </header>
   );

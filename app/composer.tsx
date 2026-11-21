@@ -3,17 +3,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * §4.1 + §4.2. The field is a rule on paper; it grows 3→8 lines; Enter asks,
- * Shift+Enter breaks. Skeleton ≤150ms (CSS paint, before any response), then
- * streamed Devanagari with a live caret, रोकें from the first token, and a
- * typed question that is never lost on failure (§4.2 P0 rule).
+ * §4.1/4.2 v2. Elevated composer panel (hairline + shadow, focus ring in
+ * green), Ask inside the panel, quota beside it, text-only chips below that
+ * fill and ask in one tap. Skeleton in one paint, streamed answer with a live
+ * caret, Stop from the first token, typed question never lost on failure.
+ * Chrome is English; answer language follows the asker.
  */
 
 const EXAMPLES = [
-  "क्रेडिट स्कोर कैसे बढ़ाएं?",
-  "किसान सम्मान निधि की किस्त नहीं आई, क्या करूं?",
-  "GST नोटिस आया है, क्या करूं?",
-  "साइबर ठगी हो गई, पैसा वापस कैसे मिलेगा?",
+  "How do I improve my credit score?",
+  "My PM-KISAN instalment has not arrived — what now?",
+  "A GST notice arrived. What should I do?",
+  "How do I link my Aadhaar with my PAN?",
+];
+
+const CHIPS = [
+  "How do I improve my credit score?",
+  "My PM-KISAN instalment is stuck",
+  "A GST notice arrived — what now?",
+  "Link Aadhaar with PAN",
+  "Online fraud: get my money back",
+  "PM Awas Yojana eligibility",
 ];
 
 type Phase = "idle" | "thinking" | "streaming" | "done" | "error" | "stopped";
@@ -47,7 +57,6 @@ export default function Composer() {
       .catch(() => setQuota(null));
   }, []);
 
-  /* rotating Devanagari placeholder, only while empty and idle (§4.1) */
   useEffect(() => {
     if (q !== "" || phase !== "idle") return;
     const t = setInterval(() => setPh((p) => (p + 1) % EXAMPLES.length), 4000);
@@ -58,7 +67,7 @@ export default function Composer() {
     const el = areaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 8 * 35 + 22)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 8 * 32 + 14)}px`;
   }, []);
 
   const pushHistory = (question: string, slug: string) => {
@@ -90,7 +99,7 @@ export default function Composer() {
         });
         if (!res.ok || !res.body) {
           const j = (await res.json().catch(() => null)) as { message?: string } | null;
-          const e = new Error(j?.message ?? "नेटवर्क त्रुटि — दुबारा कोशिश करें।");
+          const e = new Error(j?.message ?? "Network trouble — try once more.");
           (e as Error & { handled?: boolean }).handled = !!j?.message;
           throw e;
         }
@@ -108,7 +117,11 @@ export default function Composer() {
             if (!line.startsWith("data: ")) continue;
             const ev = JSON.parse(line.slice(6)) as Record<string, unknown>;
             if (ev.t === "meta") {
-              setMeta((m) => ({ ...m, existingSlug: ev.existingSlug as string | undefined, langLabel: ev.langLabel as string }));
+              setMeta((m) => ({
+                ...m,
+                existingSlug: ev.existingSlug as string | undefined,
+                langLabel: ev.langLabel as string,
+              }));
               if (typeof ev.quotaLeft === "number") setQuota(ev.quotaLeft as number);
             } else if (ev.t === "tok") {
               seen += ev.s as string;
@@ -137,10 +150,9 @@ export default function Composer() {
           }
         }
       } catch (e) {
-        if (ctrl.signal.aborted) return; // user pressed रोकें
+        if (ctrl.signal.aborted) return;
         const handled = (e as Error & { handled?: boolean }).handled;
         if (!handled && attempt === 0) {
-          /* one automatic retry on a network blip (§4.2), question preserved */
           await new Promise((r) => setTimeout(r, 350));
           return ask(question, 1);
         }
@@ -166,7 +178,7 @@ export default function Composer() {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      window.prompt("कॉपी करें:", url);
+      window.prompt("Copy:", url);
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
@@ -176,9 +188,9 @@ export default function Composer() {
 
   return (
     <>
-      <form onSubmit={submit}>
-        <label className="sr-only" htmlFor="q" style={{ position: "absolute", left: -9999 }}>
-          आपका सवाल
+      <form className="composer" onSubmit={submit}>
+        <label htmlFor="q" style={{ position: "absolute", left: -9999 }}>
+          Your question
         </label>
         <textarea
           id="q"
@@ -199,20 +211,37 @@ export default function Composer() {
             }
           }}
         />
-        <div className="ask-row">
+        <div className="composer-row">
           <span className="quota-line" aria-live="polite">
-            {quota !== null ? `आज ${quota} सवाल बाकी` : ""}
+            {quota !== null ? `${quota} free question${quota === 1 ? "" : "s"} left today` : ""}
           </span>
           <button className="ask-btn" type="submit" disabled={busy}>
-            पूछें
+            Ask
           </button>
         </div>
       </form>
 
+      <div className="chips" role="group" aria-label="Try one of these">
+        {CHIPS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className="chip"
+            disabled={busy}
+            onClick={() => {
+              setQ(c);
+              void ask(c, 0);
+            }}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
       {phase !== "idle" && (
         <section className="answer" aria-live="polite">
           {phase === "thinking" && (
-            <div className="skeleton" aria-label="जवाब आ रहा है">
+            <div className="skeleton" aria-label="Answer on its way">
               <i />
               <i />
               <i />
@@ -227,20 +256,20 @@ export default function Composer() {
           <div className="answer-tools">
             {phase === "streaming" && (
               <button className="stop-btn" onClick={stop}>
-                रोकें
+                Stop
               </button>
             )}
             {phase === "done" && meta.slug && (
               <>
-                <button onClick={share}>{copied ? "कॉपी हो गया ✓" : "साझा करें"}</button>
-                <a href={`/j/${meta.slug}`}>सार्वजनिक पेज</a>
+                <button onClick={share}>{copied ? "Copied ✓" : "Share"}</button>
+                <a href={`/j/${meta.slug}`}>Public page</a>
               </>
             )}
             {(phase === "done" || phase === "stopped") && meta.latencyMs !== undefined && (
               <span>
-                {meta.existingSlug ? "यह जवाब पहले से दर्ज था · " : ""}
-                {meta.demo ? "डेमो इंजन" : meta.model} · {(meta.latencyMs / 1000).toFixed(1)}s
-                {meta.costPaise !== undefined && ` · अनुमानित लागत ₹${(meta.costPaise / 100).toFixed(2)}`}
+                {meta.existingSlug ? "answer already existed · " : ""}
+                {meta.demo ? "demo engine" : meta.model} · {(meta.latencyMs / 1000).toFixed(1)}s
+                {meta.costPaise !== undefined && ` · est. cost ₹${(meta.costPaise / 100).toFixed(2)}`}
               </span>
             )}
           </div>

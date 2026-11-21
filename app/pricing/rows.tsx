@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-const NOTE = "भुगतान वीक 7 में आता है (UPI पहले)। यह डेमो है — अभी कुछ नहीं कटेगा, कुछ नहीं माँगा जाएगा।";
+const NOTE =
+  "Payments arrive in Week 7 (UPI first). This is a demo — nothing will be charged and nothing will be asked for.";
 
 export default function PricingRows() {
   const [note, setNote] = useState("");
@@ -11,30 +12,34 @@ export default function PricingRows() {
   return (
     <>
       <div className="plan-row">
-        <h2>मुफ़्त</h2>
+        <h2>Free</h2>
         <span className="price">₹0</span>
-        <p>3 सवाल प्रति दिन · इतिहास इसी डिवाइस पर · सार्वजनिक पेज हाँ</p>
-        <button onClick={pick}>इसी से शुरू करें</button>
+        <p>3 questions a day · history on this device · public pages included</p>
+        <button onClick={pick}>Start here</button>
       </div>
       <div className="plan-row">
-        <h2>रोज़</h2>
-        <span className="price">₹49/माह</span>
-        <p>50 सवाल प्रति दिन · इतिहास सभी डिवाइस पर · लंबे जवाब · GST इनवॉइस</p>
-        <button onClick={pick}>चुनें</button>
+        <h2>Daily</h2>
+        <span className="price">₹49/mo</span>
+        <p>50 questions a day · history on every device · longer answers · GST invoice</p>
+        <button onClick={pick}>Choose</button>
       </div>
       <div className="plan-row">
-        <h2>साल</h2>
-        <span className="price">₹399/वर्ष</span>
-        <p>₹33/माह के बराबर · वही सब, पूरे साल · 32% बचत</p>
-        <button onClick={pick}>चुनें</button>
+        <h2>Yearly</h2>
+        <span className="price">₹399/yr</span>
+        <p>Works out to ₹33/mo · everything in Daily, all year · 32% cheaper</p>
+        <button onClick={pick}>Choose</button>
       </div>
       <div className="plan-row">
-        <h2>पैक</h2>
+        <h2>Pack</h2>
         <span className="price">₹19</span>
-        <p>25 सवाल एक बार, 30 दिन वैध · सदस्यता नहीं, बस जितना चाहिए</p>
-        <button onClick={pick}>चुनें</button>
+        <p>25 questions once, valid 30 days · no subscription, just what you need</p>
+        <button onClick={pick}>Choose</button>
       </div>
-      {note && <p className="err-line" style={{ marginTop: 20 }}>{note}</p>}
+      {note && (
+        <p className="err-line" style={{ marginTop: 20 }}>
+          {note}
+        </p>
+      )}
     </>
   );
 }
