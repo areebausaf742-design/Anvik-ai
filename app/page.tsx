@@ -1,26 +1,249 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, AudioLines, Braces, Eye, Image as ImageIcon, MessageCircle, Orbit, Sparkles, WandSparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Orb from "@/components/anvik/orb";
 import { Brand } from "@/components/anvik/navigation";
+import { CORPUS } from "@/lib/corpus";
+import { slugify } from "@/lib/transliterate";
 
-const features = [
-  { icon: MessageCircle, label: "01 / CONVERSATION", title: "A mind that meets you there.", text: "From the half-formed thought to the hard question. Talk it out, go deeper, get somewhere.", href: "/chat", tag: "CHAT" },
-  { icon: ImageIcon, label: "02 / IMAGE STUDIO", title: "Give the impossible a shape.", text: "Turn a sentence into a direction. Explore an idea in light, color and texture.", href: "/image", tag: "CREATE" },
-  { icon: Braces, label: "03 / CODE LAB", title: "Make the leap from idea to build.", text: "Think through architecture, write a first draft, and untangle the stubborn bug.", href: "/code", tag: "BUILD" },
-  { icon: AudioLines, label: "04 / VOICE", title: "Think out loud. Keep moving.", text: "Let a thought arrive in its own words. Speak naturally and bring it into your chat.", href: "/voice", tag: "SPEAK" },
-  { icon: Eye, label: "05 / VISION", title: "More than what meets the eye.", text: "Bring the details into focus. Ask about an image or document in your conversation.", href: "/chat", tag: "EXPLORE" },
-  { icon: Orbit, label: "06 / MEMORY", title: "Your ideas, still in orbit.", text: "Your conversations stay with you on this device, ready when you want to pick them up.", href: "/chat", tag: "REMEMBER" },
+/**
+ * Landing page. Proof is the corpus itself (plan §3.6): three real questions
+ * with real answers and real public URLs. No invented stats, no testimonials,
+ * no gradient headline, no feature-card bento, no announcement pill.
+ */
+
+const surfaces = [
+  {
+    href: "/chat",
+    label: "Chat",
+    title: "Ask anything, follow up",
+    text: "A conversation that remembers what you already said — on this device only.",
+  },
+  {
+    href: "/image",
+    label: "Image",
+    title: "Turn a sentence into a picture",
+    text: "Describe the scene, pick a style, download the result. Free, no card.",
+  },
+  {
+    href: "/code",
+    label: "Code",
+    title: "A first draft you can run",
+    text: "Describe what you are building and get code plus the reasoning behind it.",
+  },
+  {
+    href: "/voice",
+    label: "Voice",
+    title: "Speak instead of typing",
+    text: "Dictation runs in your browser; your words become the next question.",
+  },
+  {
+    href: "/vision",
+    label: "Vision",
+    title: "Ask about a photo or a form",
+    text: "Upload an image and ask what a field, a line or a detail actually means.",
+  },
+  {
+    href: "/library",
+    label: "Library",
+    title: "Start from a good question",
+    text: "Twenty-four prompts written for real work, not for demo screenshots.",
+  },
 ];
 
+/** Three real answers from the corpus, in the user's own words. */
+const proofIds = ["pmkisan", "gst-notice", "aadhaar-pan"];
+
 export default function Home() {
-  return <main className="landing-page">
-    <section className="hero-section" id="universe"><div className="hero-copy"><div className="eyebrow"><span className="eyebrow-light" /> YOUR NEXT THOUGHT STARTS HERE</div><h1>Meet ANVIK.<br /><span className="gradient-text">Your AI universe.</span></h1><p className="hero-description">One curious mind for whatever comes next. Make sense of a question, shape an idea, or start something you haven&apos;t seen before.</p><div className="hero-buttons"><Link className="button button-bright" href="/chat">Start exploring <ArrowUpRight aria-hidden="true" /></Link><a className="button button-quiet" href="#capabilities">Discover the universe <ArrowDownRight aria-hidden="true" /></a></div><div className="hero-meta"><span className="mini-presence"><i /></span> ONE SPACE FOR ALL YOUR CURIOSITY <span className="meta-divider">/</span> MADE FOR WHAT&apos;S NEXT</div></div>
-      <div className="hero-visual"><div className="orbit-label orbit-label-top"><span>ANVIK / 01</span><b>IDEAS IN MOTION</b></div><div className="orb-aura" /><Orb /><div className="float-note note-one"><span className="note-icon"><Sparkles /></span><span><b>One mind</b><small>many directions</small></span><span className="note-dot" /></div><div className="float-note note-two"><span className="signal-bars"><i /><i /><i /><i /></span><span><b>Always in flow</b><small>your next thought</small></span></div><div className="orbit-label orbit-label-bottom"><span>VIOLET / CYAN / POSSIBILITY</span><b>◌ &nbsp; ALWAYS BECOMING</b></div></div>
-    </section>
-    <div className="capability-ribbon" aria-label="ANVIK capabilities"><span>ONE MIND</span><i />CHAT<i />IMAGES<i />CODE<i />VOICE<i />VISION<i />IDEAS<span>INFINITE POSSIBILITIES</span></div>
-    <section className="section capabilities-section" id="capabilities"><div className="section-heading"><div><div className="eyebrow">A UNIVERSE, NOT A TOOLBOX</div><h2>One thought can<br /><span className="muted-heading">go anywhere.</span></h2></div><p>Six ways into the same creative current. Start with whatever is on your mind.</p></div><div className="feature-grid">{features.map(({ icon: Icon, label, title, text, href, tag }, i) => <Link className={`feature-card feature-card-${i + 1}`} key={label} href={href}><div className="feature-top"><span className="feature-icon"><Icon aria-hidden="true" /></span><span className="feature-label">{label}</span></div><div><span className="feature-tag">{tag} <ArrowUpRight aria-hidden="true" /></span><h3>{title}</h3><p>{text}</p></div></Link>)}</div></section>
-    <section className="section manifesto"><div className="manifesto-art"><div className="manifesto-ring ring-a"/><div className="manifesto-ring ring-b"/><div className="manifesto-core"><Brand compact /></div><span className="manifesto-coordinate">45° 31&apos; N<br />122° 40&apos; W</span><span className="manifesto-caption">A DIFFERENT KIND OF INTELLIGENCE</span></div><div className="manifesto-copy"><div className="eyebrow">NOT ANOTHER CHAT WINDOW</div><h2>There&apos;s more<br />to a thought <span className="gradient-text">than an answer.</span></h2><p>ANVIK is a place to wander productively. Follow a curiosity into a conversation, turn the conversation into a creation, and keep the parts you want to come back to.</p><Link href="/chat" className="text-link">Enter your universe <ArrowRight aria-hidden="true" /></Link></div></section>
-    <section className="section plans-section" id="plans"><div className="plans-inner"><div className="eyebrow">ROOM TO WANDER</div><h2>Start anywhere.<br /><span className="muted-heading">The rest unfolds.</span></h2><p className="plans-desc">Your universe is open. Start a conversation and see where it takes you.</p><Link href="/chat" className="button button-bright">Begin with a thought <ArrowUpRight aria-hidden="true" /></Link><span className="plans-footnote">NO SETUP REQUIRED <i /> YOUR HISTORY STAYS ON THIS DEVICE</span></div><div className="plans-orbit"><Orb size="small" /><span>∞</span></div></section>
-    <footer className="site-footer"><div className="footer-top"><Brand /><span className="footer-tagline">One Mind. Infinite Possibilities.</span><Link className="button button-small button-outline" href="/chat">Come on in <ArrowUpRight aria-hidden="true" /></Link></div><div className="footer-bottom"><span>© 2026 ANVIK AI</span><span>A SMALL UNIVERSE FOR BIG THOUGHTS</span><Link href="/settings">Privacy &amp; settings</Link></div></footer>
-  </main>;
+  const proof = proofIds
+    .map((id) => CORPUS.find((entry) => entry.id === id))
+    .filter((entry): entry is (typeof CORPUS)[number] => Boolean(entry));
+
+  return (
+    <main className="landing-page">
+      <section className="hero-section" id="universe">
+        <div className="hero-copy">
+          <p className="eyebrow">
+            <span className="eyebrow-light" aria-hidden="true" />
+            English · हिंदी · Hinglish
+          </p>
+          <h1>
+            Ask in your own words.
+            <br />
+            <span className="gradient-text">Get a straight answer.</span>
+          </h1>
+          <p className="hero-description">
+            ANVIK is a personal AI that answers in the language you asked in — with the steps,
+            the fee, the office and the official page. No account, no card.
+          </p>
+          <div className="hero-buttons">
+            <Link className="button button-bright" href="/chat">
+              Ask your first question <ArrowUpRight aria-hidden="true" />
+            </Link>
+            <a className="button button-quiet" href="#answers">
+              See real answers
+            </a>
+          </div>
+          <p className="hero-meta">
+            <span className="mini-presence" aria-hidden="true" />
+            Three free questions a day
+            <span className="meta-divider" aria-hidden="true">/</span>
+            History stays on this device
+          </p>
+        </div>
+        <div className="hero-visual">
+          <Orb />
+          <div className="float-note note-one">
+            <span>
+              <b>Hindi in, Hindi out</b>
+              <small>Devanagari answered in Devanagari</small>
+            </span>
+          </div>
+          <div className="float-note note-two">
+            <span>
+              <b>Official sources</b>
+              <small>pmkisan.gov.in, not a blog</small>
+            </span>
+            <span className="note-dot" aria-hidden="true" />
+          </div>
+        </div>
+      </section>
+
+      <div className="capability-ribbon" aria-hidden="true">
+        <span>Chat</span>
+        <i />
+        Image
+        <i />
+        Code
+        <i />
+        Voice
+        <i />
+        Vision
+        <i />
+        Prompt library
+      </div>
+
+      <section className="section capabilities-section" id="capabilities">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Six surfaces, one memory</p>
+            <h2>
+              Start with a question.
+              <br />
+              <span className="muted-heading">Take it wherever it goes.</span>
+            </h2>
+          </div>
+          <p>
+            Everything you make is kept on this device, so a conversation can turn into a picture,
+            a draft, or a plan without starting over.
+          </p>
+        </div>
+        <div className="feature-grid">
+          {surfaces.map(({ href, label, title, text }) => (
+            <Link className="feature-card" key={href} href={href}>
+              <div className="feature-top">
+                <span className="feature-label">{label}</span>
+              </div>
+              <div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="section" id="answers">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Answers, not marketing</p>
+            <h2>
+              What people actually ask.
+              <br />
+              <span className="muted-heading">Here is what they get.</span>
+            </h2>
+          </div>
+          <p>Three real answers from the launch set, each readable on its own public page.</p>
+        </div>
+        <div className="feature-grid">
+          {proof.map((entry) => (
+            <Link
+              className="feature-card"
+              key={entry.id}
+              href={`/j/${slugify(entry.questions.en)}`}
+            >
+              <div className="feature-top">
+                <span className="feature-label">Answered</span>
+              </div>
+              <div>
+                <h3>{entry.questions.en}</h3>
+                <p>{entry.answers.en.split("\n")[0]}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="section manifesto">
+        <div className="manifesto-art">
+          <Brand />
+        </div>
+        <div className="manifesto-copy">
+          <p className="eyebrow">Why it exists</p>
+          <h2>
+            Anvikshiki: the lamp
+            <br />
+            of all the sciences.
+          </h2>
+          <p>
+            The name comes from Kautilya&apos;s <em>Arthashastra</em> — the discipline of examining what
+            follows from what. That is the whole product: a plain question, an ordered answer, and
+            the official page you can check it against.
+          </p>
+          <Link href="/about" className="text-link">
+            Read the longer story <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
+      <section className="plans-section" id="plans">
+        <div className="plans-inner">
+          <p className="eyebrow">Pricing, in rupees</p>
+          <h2>
+            Free to start.
+            <br />
+            <span className="muted-heading">₹19 when you need more.</span>
+          </h2>
+          <p className="plans-desc">
+            Three questions a day, free, forever — no card and no trial clock. A ₹19 pack adds
+            25 questions for 30 days, and ₹49 a month removes the daily limit.
+          </p>
+          <Link href="/pricing" className="button button-bright">
+            See what it costs <ArrowUpRight aria-hidden="true" />
+          </Link>
+          <span className="plans-footnote">
+            No setup required
+            <i aria-hidden="true" />
+            Your history stays on this device
+          </span>
+        </div>
+      </section>
+
+      <footer className="site-footer">
+        <div className="footer-top">
+          <Brand />
+          <span className="footer-tagline">A plain answer, in the language you asked in.</span>
+          <Link className="button button-small button-outline" href="/chat">
+            Ask ANVIK <ArrowUpRight aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="footer-bottom">
+          <span>© 2026 ANVIK</span>
+          <Link href="/about">About</Link>
+          <Link href="/pricing">Pricing</Link>
+          <Link href="/library">Prompt library</Link>
+          <Link href="/settings">Privacy &amp; settings</Link>
+        </div>
+      </footer>
+    </main>
+  );
 }

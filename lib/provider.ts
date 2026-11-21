@@ -1,8 +1,10 @@
 /**
- * Provider seam (plan §5.2). With GEMINI_API_KEY (or GOOGLE_API_KEY) set in
- * server-side env, answers stream from the live Gemini API; without it, the
+ * Provider seam (plan §5.2). One env name for the whole product:
+ * GOOGLE_GENERATIVE_AI_API_KEY — server-side, never shipped to the browser.
+ *
+ * With it set, answers stream from the live Gemini API; without it, the
  * deterministic corpus engine answers so the product stays demonstrable.
- * The key never leaves the server: this module is imported only by /api/ask.
+ * The key never leaves the server: this module is imported only by routes.
  *
  * Endpoint verified against current docs (Nov 2026):
  *   POST {base}/v1beta/models/{model}:streamGenerateContent?alt=sse
@@ -10,10 +12,33 @@
  *   SSE lines carry candidates[0].content.parts[].text and a final usageMetadata.
  */
 
-export const LIVE_MODEL = process.env.ANVIK_MODEL ?? "gemini-2.5-flash";
+/** The one model id for the product. Every route reads it from here. */
+export const AI_MODEL = process.env.ANVIK_MODEL ?? "gemini-2.0-flash";
+export const LIVE_MODEL = AI_MODEL;
 
-export function liveKey(): string | undefined {
-  return process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? undefined;
+/**
+ * The only accepted env name. Two legacy aliases used to exist and are gone on
+ * purpose: two names meant /api/ask silently reported "demo engine" while
+ * /api/chat had a key (audit C-1 / item 2).
+ */
+export function serverKey(): string | undefined {
+  const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+  return key || undefined;
+}
+
+/** Kept for /api/ask's historical call site. */
+export const liveKey = serverKey;
+
+/** A key supplied by this browser in Settings, validated as a Gemini key shape. */
+export function clientKey(request: Request): string | undefined {
+  const key = request.headers.get("x-google-generative-ai-api-key")?.trim();
+  if (!key || key.length < 20) return undefined;
+  return key;
+}
+
+/** Per-request key resolution: the caller's own key wins over the server's. */
+export function resolveKey(request: Request): string | undefined {
+  return clientKey(request) ?? serverKey();
 }
 
 /** Plan §7.4 control 3: hard output cap. Identical system prompt for every
@@ -40,7 +65,7 @@ export type Usage = {
 
 /** Open the live stream. Caller decides fallback if this rejects or !ok. */
 export async function openLive(question: string, signal?: AbortSignal): Promise<Response> {
-  const key = liveKey();
+  const key = serverKey();
   if (!key) throw new Error("no key");
   return fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${LIVE_MODEL}:streamGenerateContent?alt=sse`,
@@ -143,4 +168,111 @@ export async function* streamCorpus(text: string, signal?: AbortSignal): AsyncGe
     yield piece;
     await sleep(14 + Math.random() * 26, signal);
   }
+}
+
+/**
+ * Turn a provider stream into an honest HTTP response.
+ *
+ * `streamText()` is lazy: a rejected key fails on the *first read*, not at
+ * call time. Returning `result.textStream` directly therefore produced
+ * `200` with an empty body — the user saw a blank bubble and no error
+ * (audit C-4). So the first chunk is pulled before the status is decided:
+ * a failure here is a real 401 with a message, not a silent 200.
+ */
+export type StreamedLike = {
+  getReader?: () => ReadableStreamDefaultReader<string>;
+  [Symbol.asyncIterator]?: () => AsyncIterator<string>;
+};
+
+export async function guardedTextResponse(
+  stream: unknown,
+  failure: { status?: number; error?: string; detail?: string } = {},
+): Promise<Response> {
+  const status = failure.status ?? 401;
+  const error = failure.error ?? "Add valid Gemini key in Settings.";
+  const detail =
+    failure.detail ?? "The model rejected the request. Check the key, its quota, or try again shortly.";
+
+  const source = stream as StreamedLike;
+  const encoder = new TextEncoder();
+
+  // Normalise to an async iterator so both APIs work.
+  let iterator: AsyncIterator<string>;
+  try {
+    if (typeof source.getReader === "function") {
+      const reader = source.getReader();
+      iterator = {
+        next: () =>
+          reader.read().then((r): IteratorResult<string> =>
+            r.done ? { done: true, value: undefined } : { done: false, value: r.value },
+          ),
+        return: () => {
+          reader.releaseLock();
+          return Promise.resolve({ done: true as const, value: undefined });
+        },
+      };
+    } else if (typeof source[Symbol.asyncIterator] === "function") {
+      const factory = source[Symbol.asyncIterator];
+      if (!factory) throw new Error("provider returned no stream");
+      iterator = factory.call(source);
+    } else {
+      throw new Error("provider returned no stream");
+    }
+  } catch {
+    return Response.json({ error, detail }, { status });
+  }
+
+  let first: IteratorResult<string>;
+  try {
+    first = await iterator.next();
+  } catch {
+    return Response.json({ error, detail }, { status });
+  }
+
+  // The AI SDK swallows provider failures: it logs them through `onError` and
+  // ends the stream cleanly, which used to surface as `200` + a blank body.
+  // An answer that produces no text at all is a failure, so report it as one.
+  if (first.done || typeof first.value !== "string" || first.value.length === 0) {
+    return Response.json({ error, detail }, { status });
+  }
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        if (!first.done && typeof first.value === "string" && first.value.length > 0) {
+          controller.enqueue(encoder.encode(first.value));
+        }
+        for (;;) {
+          const next = await iterator.next();
+          if (next.done) break;
+          if (typeof next.value === "string" && next.value.length > 0) {
+            controller.enqueue(encoder.encode(next.value));
+          }
+        }
+      } catch {
+        // Mid-stream failure: say so in the transcript instead of ending blank.
+        controller.enqueue(
+          encoder.encode("\n\n_The model stopped mid-answer. Please ask again._"),
+        );
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          /* already closed by a cancel */
+        }
+      }
+    },
+    cancel() {
+      void iterator.return?.(undefined);
+    },
+  });
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }

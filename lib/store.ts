@@ -1,11 +1,17 @@
 /**
- * Storage layer — plan §6.3 (seven tables), implemented here as a single
- * JSON document behind the same interface Postgres will get in Week 6.
- * Every read/write goes through this module; nothing else touches disk.
+ * Storage layer — plan §6.3 (seven tables).
  *
- * This is deliberately NOT the production store. It exists so the Week 2–3
- * loop is real end-to-end. Swapping to Supabase Postgres means reimplementing
- * this interface with the service role, plus the anon-cannot-write test (§5.2).
+ * Order of preference, all behind one interface:
+ *   1. Supabase PostgREST, when SUPABASE_URL + a key are set (reads are hydrated
+ *      into memory at boot; writes are mirrored best-effort).
+ *   2. An in-memory document seeded from the corpus — always available.
+ *   3. A JSON file under ANVIK_DATA_DIR, used only as a local convenience when
+ *      the filesystem is writable. On a read-only filesystem (Vercel) the file
+ *      is silently skipped: every read still answers from memory, so
+ *      /j/[slug], /sitemap.xml and /api/ask can never 500 on EACCES/EROFS.
+ *
+ * Every entry point is failure-tolerant by contract: a broken disk, a missing
+ * table or an offline network must degrade, never throw.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -13,6 +19,7 @@ import path from "node:path";
 import { CORPUS, type CorpusEntry } from "./corpus";
 import { slugify } from "./transliterate";
 import type { Lang } from "./detect";
+import { sbInsert, sbSelect, supabaseEnabled } from "./supabase";
 
 export type ModerationState = "clean" | "flagged" | "removed";
 
@@ -70,13 +77,67 @@ export const RATE_PER_HOUR = 20;
 /** Plan §7.4 control 1: global daily model-spend ceiling, in paise (₹500). */
 export const DAILY_CEILING_PAISE = 50000;
 
-const DATA_DIR = path.join(process.cwd(), process.env.ANVIK_DATA_DIR ?? "data");
-const DB_FILE = path.join(DATA_DIR, "db.json");
-
+const DEFAULT_DATA_DIR = path.join(process.cwd(), "data");
 const g = globalThis as unknown as { __anvikDb?: DB; __anvikLock?: Promise<unknown> };
 
+/* ---------------- persistence probes (never throw) ---------------- */
+
+/** Resolve the data dir, falling back to the OS temp dir when cwd is read-only. */
+function resolveDbFile(): string | null {
+  const candidates = [
+    process.env.ANVIK_DATA_DIR,
+    process.env.ANVIK_DATA_DIR === "" ? undefined : DEFAULT_DATA_DIR,
+    path.join(process.env.TMPDIR ?? "/tmp", "anvik-data"),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const dir of candidates) {
+    try {
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      const probe = path.join(dir, ".write-probe");
+      writeFileSync(probe, "");
+      return path.join(dir, "db.json");
+    } catch {
+      /* read-only or unwritable: try the next candidate */
+    }
+  }
+  return null; // memory-only; this is the normal path on Vercel
+}
+
+let dbFileResolved = false;
+let dbFile: string | null = null;
+
+function dbFileOrNull(): string | null {
+  if (!dbFileResolved) {
+    dbFile = resolveDbFile();
+    dbFileResolved = true;
+  }
+  return dbFile;
+}
+
+/** Write-through to disk. Silent no-op when the filesystem is read-only. */
+function persist(db: DB) {
+  const file = dbFileOrNull();
+  if (!file) return;
+  try {
+    writeFileSync(file, JSON.stringify(db));
+  } catch {
+    /* disk went away mid-flight: memory stays authoritative */
+  }
+}
+
+/* ---------------- seed ---------------- */
+
+/** IST calendar day. The quota is a product promise to Indian users, so the
+ *  reset must happen at midnight IST — a UTC key put it at 05:30 IST.
+ *  One helper for *both* callers: using a UTC date for stored answers and an
+ *  IST date for "today" made the spend ceiling read 0 after 18:30 UTC. */
+const IST_OFFSET_MS = 5.5 * 3600_000;
+function istDay(at: number = Date.now()): string {
+  return new Date(at + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 function dayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return istDay();
 }
 
 function seed(): DB {
@@ -118,37 +179,99 @@ function seed(): DB {
 }
 
 function migrate(db: DB): DB {
-  db.answers = db.answers.map((a) => ({
+  const questions = Array.isArray(db.questions) ? db.questions : [];
+  const answers = (Array.isArray(db.answers) ? db.answers : []).map((a) => ({
     ...a,
     reviewed: a.reviewed ?? a.model === "seed-corpus",
   }));
-  return db;
+  return {
+    questions,
+    answers,
+    quota: db.quota && typeof db.quota === "object" ? db.quota : {},
+    moderation: Array.isArray(db.moderation) ? db.moderation : [],
+    idempotency: db.idempotency && typeof db.idempotency === "object" ? db.idempotency : {},
+  };
 }
 
 function load(): DB {
   if (g.__anvikDb) return g.__anvikDb;
-  if (!existsSync(DB_FILE)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-    const db = migrate(seed());
-    writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-    g.__anvikDb = db;
-    return db;
+  const fresh = migrate(seed());
+  g.__anvikDb = fresh;
+  const file = dbFileOrNull();
+  if (file && existsSync(file)) {
+    try {
+      g.__anvikDb = migrate(JSON.parse(readFileSync(file, "utf8")) as DB);
+    } catch {
+      /* corrupt file: keep the seed rather than crash the page */
+    }
   }
-  const db = migrate(JSON.parse(readFileSync(DB_FILE, "utf8")) as DB);
-  g.__anvikDb = db;
-  return db;
+  return g.__anvikDb;
 }
 
-/** Single-writer mutex: good enough for one demo process; Postgres owns this in Week 6. */
+/** Merge Supabase rows into the in-memory document (best-effort, at boot). */
+async function hydrateFromSupabase(): Promise<void> {
+  const db = load();
+  if (db.answers.some((a) => a.model !== "seed-corpus")) return; // already hydrated
+
+  const answers = await sbSelect<{
+    id: string; question_id: string; body: string; model: string;
+    prompt_tokens: number | null; output_tokens: number | null; cached_tokens: number | null;
+    cost_paise: number | null; latency_ms: number | null; is_public: boolean | null;
+    published_at: number; moderation_state: string | null; reviewed: boolean | null;
+    lang: string | null; slug: string;
+  }>("anvik_answers", "select=*&order=published_at.desc&limit=500");
+  if (!answers) return;
+
+  const questions = await sbSelect<{
+    id: string; device_id: string; text: string; lang: string; slug: string | null;
+    idempotency_key: string | null; created_at: number; status: string;
+  }>("anvik_questions", "select=*&order=created_at.desc&limit=500");
+
+  for (const q of questions ?? []) {
+    if (db.questions.some((existing) => existing.id === q.id)) continue;
+    db.questions.push({
+      id: q.id,
+      deviceId: q.device_id,
+      text: q.text,
+      lang: (q.lang as Lang) ?? "en",
+      slug: q.slug,
+      idempotencyKey: q.idempotency_key,
+      createdAt: q.created_at,
+      status: (q.status as QuestionRow["status"]) ?? "answered",
+    });
+  }
+  for (const a of answers) {
+    if (db.answers.some((existing) => existing.id === a.id)) continue;
+    db.answers.push({
+      id: a.id,
+      questionId: a.question_id,
+      body: a.body,
+      model: a.model,
+      promptTokens: a.prompt_tokens ?? 0,
+      outputTokens: a.output_tokens ?? 0,
+      cachedTokens: a.cached_tokens ?? 0,
+      costPaise: a.cost_paise ?? 0,
+      latencyMs: a.latency_ms ?? 0,
+      isPublic: a.is_public ?? false,
+      publishedAt: a.published_at,
+      moderationState: (a.moderation_state as ModerationState) ?? "clean",
+      reviewed: a.reviewed ?? false,
+      lang: (a.lang as Lang) ?? "en",
+      slug: a.slug,
+    });
+  }
+}
+
+const hydration: Promise<void> = supabaseEnabled()
+  ? hydrateFromSupabase().catch(() => undefined)
+  : Promise.resolve();
+
+/** Single-writer mutex for this process. Postgres owns real concurrency. */
 function withLock<T>(fn: () => T): Promise<T> {
   const prev = g.__anvikLock ?? Promise.resolve();
   const run = prev.then(() => fn());
   g.__anvikLock = run.catch(() => undefined);
   return run;
-}
-
-function persist(db: DB) {
-  writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
 /** §7.1 planning factor: ~1.9 tokens per Devanagari word ≈ 0.61 tokens/char. */
@@ -167,6 +290,11 @@ export function estimateCostPaise(outputTokens: number, cachedTokens = 2200, unc
 /* ------------------------------------------------------------------ */
 
 export const store = {
+  /** Wait for an optional Supabase hydration pass. Never rejects. */
+  async ready(): Promise<void> {
+    await hydration;
+  },
+
   publicAnswers(): AnswerRow[] {
     return load()
       .answers.filter((a) => a.isPublic && a.moderationState !== "removed")
@@ -174,7 +302,7 @@ export const store = {
   },
 
   /** Reviewed public answers joined to their question text, newest first.
-   *  The gallery shows only these (owner spec, 21 Nov). */
+   *  The gallery and the sitemap both show only these (owner spec, 21 Nov). */
   reviewedWithQuestions(): { answer: AnswerRow; question: string }[] {
     const db = load();
     return store
@@ -190,7 +318,7 @@ export const store = {
   todayCostPaise(): number {
     const day = dayKey();
     return load()
-      .answers.filter((a) => new Date(a.publishedAt).toISOString().slice(0, 10) === day)
+      .answers.filter((a) => istDay(a.publishedAt) === day)
       .reduce((sum, a) => sum + a.costPaise, 0);
   },
 
@@ -207,6 +335,10 @@ export const store = {
     return load().answers.find((a) => a.slug === slug && a.moderationState !== "removed");
   },
 
+  questionById(id: string): QuestionRow | undefined {
+    return load().questions.find((q) => q.id === id);
+  },
+
   questionRemaining(deviceId: string): number {
     const db = load();
     const entry = db.quota[deviceId];
@@ -214,7 +346,7 @@ export const store = {
     return entry.remaining;
   },
 
-  /** Atomic single-statement decrement, in spirit (§6.2): one check-and-set, no TOCTOU. */
+  /** Atomic check-and-set under the process lock: no TOCTOU (§6.2). */
   async decrementQuota(deviceId: string): Promise<number | null> {
     return withLock(() => {
       const db = load();
@@ -229,23 +361,38 @@ export const store = {
   },
 
   async recordQuestion(row: Omit<QuestionRow, "id" | "createdAt">): Promise<QuestionRow> {
-    return withLock(() => {
+    const full = await withLock<QuestionRow>(() => {
       const db = load();
-      const full: QuestionRow = { ...row, id: `q-${crypto.randomUUID()}`, createdAt: Date.now() };
-      db.questions.push(full);
+      const created: QuestionRow = { ...row, id: `q-${crypto.randomUUID()}`, createdAt: Date.now() };
+      db.questions.push(created);
       persist(db);
-      return full;
+      return created;
     });
+    void sbInsert("anvik_questions", [{
+      id: full.id, device_id: full.deviceId, text: full.text, lang: full.lang,
+      slug: full.slug, idempotency_key: full.idempotencyKey,
+      created_at: full.createdAt, status: full.status,
+    }]);
+    return full;
   },
 
   async recordAnswer(row: Omit<AnswerRow, "id" | "publishedAt">): Promise<AnswerRow> {
-    return withLock(() => {
+    const full = await withLock<AnswerRow>(() => {
       const db = load();
-      const full: AnswerRow = { ...row, id: `a-${crypto.randomUUID()}`, publishedAt: Date.now() };
-      db.answers.push(full);
+      const created: AnswerRow = { ...row, id: `a-${crypto.randomUUID()}`, publishedAt: Date.now() };
+      db.answers.push(created);
       persist(db);
-      return full;
+      return created;
     });
+    void sbInsert("anvik_answers", [{
+      id: full.id, question_id: full.questionId, body: full.body, model: full.model,
+      prompt_tokens: full.promptTokens, output_tokens: full.outputTokens,
+      cached_tokens: full.cachedTokens, cost_paise: full.costPaise, latency_ms: full.latencyMs,
+      is_public: full.isPublic, published_at: full.publishedAt,
+      moderation_state: full.moderationState, reviewed: full.reviewed,
+      lang: full.lang, slug: full.slug,
+    }]);
+    return full;
   },
 
   async bindIdempotency(key: string, answerId: string): Promise<void> {
@@ -269,14 +416,19 @@ export const store = {
       db.moderation.push({ ...row, id: `m-${crypto.randomUUID()}`, createdAt: Date.now() });
       persist(db);
     });
+    void sbInsert("anvik_moderation", [{
+      id: `m-${crypto.randomUUID()}`, question_text: row.questionText, stage: row.stage,
+      reason_code: row.reasonCode, action: row.action, created_at: Date.now(),
+    }]);
   },
 
   /** §4.3 duplicate check: normalised token-overlap, no embeddings. */
   findPublicMatch(question: string, threshold = 0.75): AnswerRow | undefined {
     const q = normTokens(question);
     if (q.size === 0) return undefined;
+    const db = load();
     for (const a of store.publicAnswers()) {
-      const qRow = load().questions.find((x) => x.id === a.questionId);
+      const qRow = db.questions.find((x) => x.id === a.questionId);
       if (!qRow) continue;
       const t = normTokens(qRow.text);
       if (t.size === 0) continue;
