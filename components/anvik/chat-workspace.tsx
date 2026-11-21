@@ -27,6 +27,7 @@ export default function ChatWorkspace() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [demoMode, setDemoMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [files, setFiles] = useState<string[]>([]);
@@ -48,7 +49,9 @@ export default function ChatWorkspace() {
     setInput(""); setFiles([]); setPending(true); setError("");
     try {
       const history = [...(current?.messages ?? []), userMessage].slice(-40).map(({ role, content: text }) => ({ role, content: text }));
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, mode, temperature }) });
+      const apiKey = localStorage.getItem("anvik-gemini-api-key") || "";
+      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json", ...(apiKey ? { "x-google-generative-ai-api-key": apiKey } : {}) }, body: JSON.stringify({ messages: history, mode, temperature }) });
+      setDemoMode(response.headers.get("x-anvik-demo") === "true");
       if (!response.ok || !response.body) {
         const issue = await response.json().catch(() => null);
         throw new Error(issue?.error || "ANVIK could not connect. Please try again.");
@@ -95,6 +98,7 @@ export default function ChatWorkspace() {
       <div className={`conversation${activeMessages.length ? " conversation-populated" : ""}`}>
         {activeMessages.length === 0 ? <div className="welcome-state"><div className="welcome-orb"><Orb size="small" /></div><div className="welcome-kicker"><span /> READY WHEN YOU ARE</div><h1>Where should we<br /><span className="gradient-text">take this thought?</span></h1><p>A question, a half-formed idea, a curious detour. Start anywhere.</p><div className="prompt-grid">{promptIdeas.map(({ icon, title, text }) => <button className="prompt-card" key={title} onClick={() => void sendMessage(text)}><span className="prompt-icon">{icon}</span><span><b>{title}</b><small>{text}</small></span><ArrowUpRight className="prompt-arrow" /></button>)}</div></div> : <div className="message-list">{activeMessages.map((message) => <article className={`message-row message-${message.role}`} key={message.id}><div className="message-avatar">{message.role === "assistant" ? <span>A</span> : "Y"}</div><div className="message-content"><span className="message-byline">{message.role === "assistant" ? "ANVIK" : "YOU"}</span><p>{message.content || (pending ? "ANVIK is thinking..." : "")}</p>{message.role === "assistant" && message.content && <button className="message-copy" onClick={() => { void navigator.clipboard.writeText(message.content); setCopied(message.id); window.setTimeout(() => setCopied(null), 1500); }} aria-label="Copy response">{copied === message.id ? <Check /> : <Copy />}{copied === message.id ? "Copied" : "Copy"}</button>}</div></article>)}{pending && <div className="thinking-indicator"><span className="thinking-dot" /><span>ANVIK is thinking...</span></div>}<div ref={endRef} /></div>}
       </div>
+      {demoMode && <div className="gemini-demo-card" role="status"><Sparkles aria-hidden="true"/><span><b>Demo Mode</b> Add your free Gemini key in Settings to unlock live AI.</span><Link href="/settings">Open Settings <ArrowUpRight aria-hidden="true"/></Link></div>}
       <div className="composer-dock"><form className="chat-composer" onSubmit={submit}><textarea ref={fieldRef} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={keySubmit} placeholder="Ask ANVIK anything..." aria-label="Message ANVIK" rows={1} disabled={pending} /><div className="composer-controls"><div className="composer-tools"><button type="button" className="composer-tool" onClick={() => document.getElementById("anvik-files")?.click()} aria-label="Attach a file"><Paperclip /></button><button type="button" className="composer-tool" onClick={listen} aria-label="Use voice input"><Mic /></button><input id="anvik-files" hidden type="file" multiple onChange={(event) => setFiles(Array.from(event.target.files ?? []).map((file) => file.name))} /></div><div className="composer-hint">{files.length ? `${files.length} file${files.length === 1 ? "" : "s"} selected` : "ENTER TO SEND · SHIFT + ENTER FOR A NEW LINE"}<button type="submit" className="send-button" aria-label="Send message" disabled={!input.trim() || pending}>{pending ? <AudioLines /> : <ArrowUp />}</button></div></div></form>{error && <p className="chat-error" role="status">{error}</p>}<div className="composer-disclaimer">ANVIK CAN MAKE MISTAKES. KEEP YOUR CURIOSITY, CHECK IMPORTANT DETAILS.</div></div>
     </section>
   </div>;

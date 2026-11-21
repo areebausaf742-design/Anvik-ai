@@ -10,10 +10,10 @@ export const promptLibrary = [
 ];
 
 export const modes = [
-  { id: "fast", label: "Fast", model: "openai/gpt-6.2-astra-fast", hint: "Quick answers" },
-  { id: "smart", label: "Smart", model: "openai/gpt-6.2-astra", hint: "Deep thinking" },
-  { id: "creative", label: "Creative", model: "anthropic/claude-opus-4.8", hint: "Fresh perspectives" },
-  { id: "coder", label: "Coder", model: "openai/gpt-5.5", hint: "Code & logic" },
+  { id: "fast", label: "Fast", hint: "Quick answers" },
+  { id: "smart", label: "Smart", hint: "Deep thinking" },
+  { id: "creative", label: "Creative", hint: "Fresh perspectives" },
+  { id: "coder", label: "Coder", hint: "Code & logic" },
 ] as const;
 
 export type ModeId = (typeof modes)[number]["id"];
