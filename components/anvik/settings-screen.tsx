@@ -2,10 +2,35 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ChevronDown, ExternalLink, ShieldCheck, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Brain,
+  Check,
+  ChevronDown,
+  ExternalLink,
+  GraduationCap,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { modes } from "@/lib/prompts";
 import { useChatStore } from "@/store/use-chat-store";
 import { clearApiKey, maskKey, readApiKey, saveApiKey } from "@/lib/client-key";
+import {
+  DEFAULT_MEMORY,
+  EMPTY_LEARNING,
+  clearLearning,
+  clearMemory,
+  learningStats,
+  readLearning,
+  readMemory,
+  writeMemory,
+  type Learning,
+  type Memory,
+  type Style,
+} from "@/lib/learning";
+import { freeShare, readUsage, SOFT_DAILY_LIMIT, type Usage } from "@/lib/credit";
 
 export default function SettingsScreen() {
   const mode = useChatStore((state) => state.mode);
@@ -19,8 +44,27 @@ export default function SettingsScreen() {
   const [keySaved, setKeySaved] = useState(false);
   const [keyError, setKeyError] = useState("");
 
+  const [memory, setMemory] = useState<Memory>(DEFAULT_MEMORY);
+  const [learning, setLearning] = useState<Learning>(EMPTY_LEARNING);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [memorySaved, setMemorySaved] = useState(false);
+
   // Show that a key exists without ever putting it back in the input (audit H-3).
-  useEffect(() => setSavedKey(readApiKey()), []);
+  useEffect(() => {
+    setSavedKey(readApiKey());
+    setMemory(readMemory());
+    setLearning(readLearning());
+    setUsage(readUsage());
+  }, []);
+
+  const stats = learningStats(learning);
+
+  function remember(next: Partial<Memory>) {
+    const merged = writeMemory(next);
+    setMemory(merged);
+    setMemorySaved(true);
+    window.setTimeout(() => setMemorySaved(false), 2000);
+  }
 
   function saveGeminiKey(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,6 +185,201 @@ export default function SettingsScreen() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card-title">
+          <span className="settings-icon">
+            <Brain />
+          </span>
+          <div>
+            <h2>Memory</h2>
+            <p>What ANVIK should remember about you in every conversation.</p>
+          </div>
+          {memorySaved && (
+            <span className="settings-value" role="status">
+              Saved
+            </span>
+          )}
+        </div>
+
+        <div className="memory-grid">
+          <label className="memory-field">
+            <span>Name</span>
+            <input
+              type="text"
+              maxLength={40}
+              value={memory.name}
+              placeholder="What should ANVIK call you?"
+              onChange={(event) => setMemory({ ...memory, name: event.target.value })}
+              onBlur={() => remember({ name: memory.name.trim() })}
+            />
+          </label>
+
+          <label className="memory-field">
+            <span>Preferred language</span>
+            <select
+              value={memory.lang}
+              onChange={(event) => remember({ lang: event.target.value as Memory["lang"] })}
+            >
+              <option value="en">English</option>
+              <option value="hi-Latn">Hinglish</option>
+              <option value="hi">हिन्दी</option>
+            </select>
+          </label>
+        </div>
+
+        <p className="memory-label">Preferred answer style</p>
+        <div className="settings-options memory-styles">
+          {(
+            [
+              { id: "short", label: "Short", hint: "Two or three sentences." },
+              { id: "detailed", label: "Detailed", hint: "Steps and official sources." },
+              { id: "coder", label: "Coder", hint: "Code first, no small talk." },
+            ] as { id: Style; label: string; hint: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={memory.style === item.id ? "mode-option mode-option-active" : "mode-option"}
+              onClick={() => remember({ style: item.id })}
+            >
+              <span>
+                <b>{item.label}</b>
+                <small>{item.hint}</small>
+              </span>
+              {memory.style === item.id && <Check />}
+            </button>
+          ))}
+        </div>
+
+        <div className="memory-actions">
+          <button
+            className="clear-history-button"
+            type="button"
+            onClick={() => {
+              clearMemory();
+              setMemory(DEFAULT_MEMORY);
+            }}
+          >
+            <Trash2 /> Clear memory
+          </button>
+          <p className="privacy-detail">
+            Saved in this browser as <code>anvik-memory</code>. Never keys, passwords or phone numbers.
+          </p>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card-title">
+          <span className="settings-icon">
+            <GraduationCap />
+          </span>
+          <div>
+            <h2>What ANVIK learned</h2>
+            <p>From your likes, dislikes and corrections on this device.</p>
+          </div>
+          {usage && (
+            <span className="settings-value">
+              {freeShare(usage)}% free today
+            </span>
+          )}
+        </div>
+
+        <div className="learning-stats">
+          <div>
+            <b>{stats.corrections}</b>
+            <span>corrections</span>
+          </div>
+          <div>
+            <b>{stats.likes}</b>
+            <span>likes</span>
+          </div>
+          <div>
+            <b>{stats.dislikes}</b>
+            <span>dislikes</span>
+          </div>
+          <div>
+            <b>{stats.replays}</b>
+            <span>replays at 0 credits</span>
+          </div>
+        </div>
+
+        {stats.topTopics.length > 0 ? (
+          <div className="learning-topics">
+            <p className="memory-label">Topics you ask about</p>
+            <ul>
+              {stats.topTopics.map((topic) => (
+                <li key={topic.topic}>
+                  <span>{topic.topic}</span>
+                  <small>{topic.count}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="privacy-detail">
+            Nothing learned yet. Like an answer, or use “Teach ANVIK” under a reply, and it appears here.
+          </p>
+        )}
+
+        {stats.bestReplies.length > 0 && (
+          <div className="learning-best">
+            <p className="memory-label">Your three most-liked answers</p>
+            {stats.bestReplies.map((item) => (
+              <blockquote key={`${item.question}-${item.at}`}>
+                <span>{item.question}</span>
+                <p>{item.answer.length > 220 ? `${item.answer.slice(0, 220)}…` : item.answer}</p>
+              </blockquote>
+            ))}
+          </div>
+        )}
+
+        <div className="memory-actions">
+          <button
+            className="clear-history-button"
+            type="button"
+            onClick={() => {
+              if (window.confirm("Delete everything ANVIK learned on this device, including liked answers?")) {
+                clearLearning();
+                setLearning(EMPTY_LEARNING);
+              }
+            }}
+          >
+            <Trash2 /> Clear what ANVIK learned
+          </button>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card-title">
+          <span className="settings-icon">
+            <Sparkles />
+          </span>
+          <div>
+            <h2>Credits and limits</h2>
+            <p>How much of today&apos;s usage reached a model.</p>
+          </div>
+        </div>
+        <div className="learning-stats">
+          <div>
+            <b>{usage?.chats ?? 0}</b>
+            <span>live chats today</span>
+          </div>
+          <div>
+            <b>{usage?.free ?? 0}</b>
+            <span>answers at 0 credits</span>
+          </div>
+          <div>
+            <b>{SOFT_DAILY_LIMIT}</b>
+            <span>soft daily limit</span>
+          </div>
+        </div>
+        <p className="privacy-detail">
+          Greetings, repeat questions answered in the last 7 days, and answers from the reviewed set never
+          count against the limit. Only <code>gemini-2.0-flash</code> is used, with 800 tokens for chat and
+          1,500 for code.
+        </p>
       </section>
 
       <section className="settings-card">
