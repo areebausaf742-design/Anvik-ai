@@ -3,17 +3,46 @@ import "@fontsource-variable/manrope";
 import "./globals.css";
 import Navigation from "@/components/anvik/navigation";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://anvik.ai";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://anvik.ai"),
-  title: { default: "ANVIK AI — One Mind. Infinite Possibilities.", template: "%s — ANVIK AI" },
-  description: "One curious mind for whatever comes next. Chat, create images, explore code, and follow your ideas into the ANVIK AI universe.",
-  applicationName: "ANVIK AI",
-  keywords: ["AI assistant", "creative AI", "AI chat", "image generation", "code assistant"],
-  openGraph: { title: "ANVIK AI — One Mind. Infinite Possibilities.", description: "A small universe for big thoughts.", type: "website" },
+  metadataBase: new URL(siteUrl),
+  title: { default: "ANVIK — a straight answer, in your language", template: "%s — ANVIK" },
+  description:
+    "Ask a question in English, Hindi or Hinglish and get a clear, ordered answer with official sources. Free to start, no account needed.",
+  applicationName: "ANVIK",
+  keywords: ["Hindi AI", "Hinglish", "government schemes", "PM-KISAN", "GST notice", "Aadhaar PAN", "ANVIK"],
+  openGraph: {
+    title: "ANVIK — a straight answer, in your language",
+    description:
+      "Ask in English, Hindi or Hinglish. Get the steps, the fee, the office and the official page.",
+    type: "website",
+    siteName: "ANVIK",
+    url: siteUrl,
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ANVIK — a straight answer, in your language",
+    description: "Ask in English, Hindi or Hinglish. Get the steps, the fee, the office and the official page.",
+  },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#07070b", colorScheme: "dark" };
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#faf7f2",
+  colorScheme: "light",
+};
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className="dark"><body><a className="skip-link" href="#main-content">Skip to content</a><Navigation/><div id="main-content">{children}</div></body></html>;
+  return (
+    <html lang="en-IN">
+      <body>
+        <a className="skip-link" href="#main-content">Skip to content</a>
+        <Navigation />
+        <div id="main-content">{children}</div>
+      </body>
+    </html>
+  );
 }

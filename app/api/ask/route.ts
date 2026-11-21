@@ -11,6 +11,7 @@ import {
   corpusMatch,
 } from "@/lib/store";
 import { openLive, parseLive, streamCorpus, LIVE_MODEL, liveKey, type Usage } from "@/lib/provider";
+import { allow, clientIp, LIMIT_MESSAGE } from "@/lib/rate-limit";
 import { slugify } from "@/lib/transliterate";
 
 export const runtime = "nodejs";
@@ -22,19 +23,10 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json; charset=utf-8" },
   });
 
-/* sliding-window rate limits, in-process (§6.2; Postgres-owned in Week 6) */
-const hits = new Map<string, number[]>();
+/* Sliding-window rate limit (§6.2). Shared with the paid Gemini routes so one
+   identity cannot dodge the cap by moving between endpoints. */
 function rateOk(ip: string): boolean {
-  const now = Date.now();
-  const list = (hits.get(ip) ?? []).filter((t) => now - t < 3_600_000);
-  const perMin = list.filter((t) => now - t < 60_000).length;
-  if (perMin >= RATE_PER_MIN || list.length >= RATE_PER_HOUR) {
-    hits.set(ip, list);
-    return false;
-  }
-  list.push(now);
-  hits.set(ip, list);
-  return true;
+  return allow(`ask:${ip}`, RATE_PER_MIN, RATE_PER_HOUR);
 }
 
 /** Cost in paise from real token counts at Flash-class prices, ₹95/$ (§7.2). */
@@ -47,9 +39,20 @@ function costFromUsage(u: Usage): number | null {
 }
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  try {
+    return await handle(req);
+  } catch {
+    /* A read-only disk, a missing Supabase table or a store bug must never
+       surface as a 500 on a page people share. Degrade to the corpus. */
+    return json({ message: "Answers are briefly unavailable. Please try again in a moment.", code: "degraded" }, 503);
+  }
+}
+
+async function handle(req: Request) {
+  const ip = clientIp(req);
   const jar = await cookies();
-  const deviceId = jar.get("anvik_dev")?.value ?? "nodev";
+  const deviceId =
+    jar.get("anvik_dev")?.value ?? req.headers.get("x-anvik-device")?.trim() ?? "nodev";
 
   let body: { question?: unknown; key?: unknown };
   try {
@@ -97,7 +100,7 @@ export async function POST(req: Request) {
   const quotaLeft = await store.decrementQuota(deviceId);
   if (quotaLeft === null)
     return json(
-      { message: "That’s all 3 free questions for today. Back tomorrow — or ₹19 for 25 (payments from Week 7).", code: "quota" },
+      { message: "That’s all 3 free questions for today. Your quota resets at midnight IST.", code: "quota" },
       402,
     );
 
