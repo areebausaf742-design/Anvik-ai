@@ -22,7 +22,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       description: row.body.replace(/\s+/g, " ").slice(0, 160),
       type: "article",
     },
-    robots: row.moderationState === "flagged" ? { index: false, follow: false } : { index: true, follow: true },
+    /* Owner spec 21 Nov: noindex until a human reviews the answer. */
+    robots:
+      row.reviewed && row.moderationState !== "flagged"
+        ? { index: true, follow: true }
+        : { index: false, follow: false },
   };
 }
 
@@ -39,6 +43,7 @@ export default async function PublicAnswer({ params }: Params) {
       <div className="a-body">{row.body}</div>
       <p className="meta-line">
         {when} · answered in {langLabel(row.lang)} · public answer
+        {row.reviewed ? "" : " · awaiting review"}
       </p>
       <div className="pub-cta">
         <p>Anvik — ask anything, plainly</p>

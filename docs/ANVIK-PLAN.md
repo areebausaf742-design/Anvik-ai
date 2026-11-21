@@ -217,6 +217,16 @@ What replaces the hero photograph: **real answers, in Devanagari, on the homepag
 
 Everything else in the checklist stands, including no photograph anywhere and one saffron event per screen.
 
+**Owner amendments v3, 21 November 2026, the English-only rebuild.** A third revision, broader than the second, recorded here with the same discipline:
+
+- **Chrome is English-only and Devanagari-free.** No Hindi string, no Devanagari glyph in any UI surface, including About (the Kautilya shloka survives as IAST transliteration). This revises the Hindi-first *interface* a second time; §6.1 is untouched — the *answer* still returns in the language the question was written in, which is now the product's language story in one sentence.
+- **Fonts: Manrope only in chrome.** Fraunces is retired, including as wordmark (the wordmark is Manrope 800 lowercase). The Mukta Devanagari face is still declared but is referenced only as a per-glyph fallback inside answer bodies, so an English page ships **zero** Devanagari font bytes and a Hindi answer still renders properly. The §3.4 budget note is superseded accordingly.
+- **Surface: white page, soft grey ramp, one accent.** `#1F5F4B` deep green, used for the Ask button and focus rings *only*. The saffron flourish is retired entirely — §3.3's "one saffron event per screen" rule is void, replaced by "one accent, two jobs".
+- **A left sidebar is now the shell** (wordmark, New chat, History, account placeholder at the bottom; drawer on mobile). This retires the "no left-rail navigation" prohibition, which existed to avoid copying AI Studio's rail; the owner's own shell specification overrides it, and ours carries three links and an account row, not sectioned tiny-caps navigation.
+- **Chips fill the input; they do not ask.** The owner's spec; it also removes the accidental-submit hazard.
+- **Review gate: `/j/` pages are `noindex` until a human reviews an answer, and the home gallery shows reviewed answers only.** New answers are public-by-URL but unindexed until reviewed; the seeded corpus is authored, therefore reviewed. This tightens §4.3, which previously indexed by default.
+- **The live provider is wired.** `lib/provider.ts` now calls Gemini `streamGenerateContent?alt=sse` with a server-side key, the §7.4 output cap of 600 tokens and an identical system prompt per request (prompt-cacheable by design); the corpus engine remains as fallback when no key is set or the provider fails. **The §7.4 global daily spend ceiling (₹500) is implemented and enforced in `/api/ask` before any spend**, checked after quota and before generation.
+
 ### 3.7 Reference anatomy — two screenshots, read closely
 
 Until 21 November 2026 the §3.6 checklist rested on a *description* of the reference set (Appendix B). Two screenshots are now in hand and have been analysed element by element: **Google AI Studio's Build screen** (`aistudio.google.com/apps`, Gemini 4 Neon era) and **Claude's sign-in** (`claude.ai/login`). Everything below is observed, not recalled.

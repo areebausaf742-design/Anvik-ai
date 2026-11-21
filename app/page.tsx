@@ -4,29 +4,24 @@ import Composer from "./composer";
 export const dynamic = "force-dynamic";
 
 /**
- * §4.1 v2 (owner amendment, 21 Nov): AI-Studio-class composition in Anvik's
- * skin — statement headline, elevated composer, text-only chips, content
- * gallery below the fold. Chrome is full English by owner decision; answer
- * language still follows the asker (§6.1).
+ * Ask screen v3 (owner spec, 21 Nov): centred headline + one supporting line,
+ * large rounded composer with the Ask button inside, four chips that FILL the
+ * input, reviewed public answers below the fold. English-only chrome.
  */
 export default function Home() {
-  const recent = store.publicWithQuestions().slice(0, 3);
+  const recent = store.reviewedWithQuestions().slice(0, 3);
   return (
     <>
-      <section className="hero" data-screen="home">
-        <p className="status-line">DEMO ENGINE · LIVE MODEL AFTER THE MEASUREMENT WEEK</p>
-        <h1>Every question deserves a straight answer.</h1>
-        <p className="sub">
-          One field. No account, no cards, no clutter. Ask in plain words — get an
-          answer worth forwarding.
-        </p>
+      <section className="hero">
+        <h1>What can I help you with?</h1>
+        <p className="sub">One field, no account. The answer comes back in whatever language you write.</p>
         <Composer />
       </section>
 
-      <section className="gallery" aria-label="Recently answered">
+      <section className="gallery" aria-label="Reviewed public answers">
         <div className="gallery-head">
-          <h2>RECENTLY ANSWERED</h2>
-          <a href="/about">how anvik works</a>
+          <h2>REVIEWED PUBLIC ANSWERS</h2>
+          <a href="/about">how Anvik works</a>
         </div>
         <div className="cards">
           {recent.map(({ answer, question }) => (

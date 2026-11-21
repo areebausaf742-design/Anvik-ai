@@ -30,10 +30,16 @@ export function transliterate(input: string): string {
     const c = chars[i];
     if (CONSONANTS[c]) {
       out += CONSONANTS[c];
-      // inherent 'a' unless a matra or halant follows
       const next = chars[i + 1];
+      // matra or halant replaces the inherent vowel
       if (next && (MATRAS[next] || next === "्")) continue;
-      out += "a";
+      // word-final schwa deletion: a consonant ending a word keeps no 'a'
+      // ("kisan", not "kisana"); medially the inherent vowel stays
+      const nextIsDevanagari = next !== undefined && /[ऀ-ॿ]/.test(next);
+      if (nextIsDevanagari) out += "a";
+    } else if (c === "़") {
+      /* nukta: folding marker, contributes no sound of its own */
+      continue;
     } else if (VOWELS[c]) out += VOWELS[c];
     else if (MATRAS[c]) out += MATRAS[c];
     else if (DIGITS[c]) out += DIGITS[c];

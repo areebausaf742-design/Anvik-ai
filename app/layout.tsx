@@ -1,43 +1,45 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/fraunces";
 import "@fontsource-variable/manrope";
-/* Self-hosted, subsetted (§3.4): unicode-range ships only the subsets a page
-   actually renders. Chrome is English by owner decision (21 Nov); Devanagari
-   subsets still load whenever an answer or question is in Hindi. */
+/* Chrome is Manrope-only and English-only (owner spec, 21 Nov). The Mukta
+   Devanagari face is declared but never referenced by chrome: it downloads
+   only if an answer actually contains Devanagari glyphs (.out / .a-body fall
+   back to it per-glyph). An English page ships zero Devanagari bytes. */
 import "@fontsource/mukta/devanagari-400.css";
-import "@fontsource/mukta/devanagari-600.css";
-import "@fontsource/mukta/latin-400.css";
-import "@fontsource/mukta/latin-600.css";
 import "./globals.css";
-import Header from "./header";
+import Sidebar from "./sidebar";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "anvik — ask anything, plainly",
-    template: "%s · anvik",
+    default: "Anvik — ask anything",
+    template: "%s · Anvik",
   },
   description:
-    "One field, one button. Ask anything in plain words — Hindi, Hinglish or English — and get an answer worth forwarding. Free to start, every answer shareable.",
+    "One field, no account. Ask anything in plain words and get a clear answer in the language you wrote. Free to start, every reviewed answer shareable.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#FAF7F2",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <Header />
-        <main>{children}</main>
-        <footer className="site-foot">
-          <span>Anvik — ask anything, plainly</span>
-          <a href="/pricing">Pricing</a>
-          <a href="/about">About</a>
-        </footer>
+        <a className="skip" href="#main">
+          Skip to content
+        </a>
+        <Sidebar />
+        <div className="shell">
+          <main id="main">{children}</main>
+          <footer className="site-foot">
+            <span>Anvik — ask anything</span>
+            <a href="/pricing">Pricing</a>
+            <a href="/about">About</a>
+          </footer>
+        </div>
       </body>
     </html>
   );
