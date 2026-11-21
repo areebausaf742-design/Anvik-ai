@@ -46,10 +46,7 @@ function OrbFallback() {
 export default function Orb({ size = "large", active = false }: { size?: "large" | "small"; active?: boolean }) {
   const [webglAvailable, setWebglAvailable] = useState(false);
   useEffect(() => {
-    const testCanvas = document.createElement("canvas");
-    const context = testCanvas.getContext("webgl2", { failIfMajorPerformanceCaveat: true }) || testCanvas.getContext("webgl", { failIfMajorPerformanceCaveat: true });
-    setWebglAvailable(Boolean(context));
-    context?.getExtension("WEBGL_lose_context")?.loseContext();
+    setWebglAvailable(process.env.NODE_ENV === "production");
   }, []);
   return (
     <motion.div className={`orb-wrap orb-${size}${active ? " orb-active" : ""}`} animate={active ? { scale: [1, 1.055, 1] } : undefined} transition={{ duration: 1.3, repeat: active ? Infinity : 0 }} aria-label="A luminous, living violet and cyan AI orb" role="img">
