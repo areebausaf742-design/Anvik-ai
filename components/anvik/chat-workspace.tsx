@@ -7,6 +7,18 @@ import { modes, promptIdeas } from "@/lib/prompts";
 import Orb from "@/components/anvik/orb";
 import Markdown from "@/components/anvik/markdown";
 import { readApiKey } from "@/lib/client-key";
+import FeedbackBar from "@/components/anvik/feedback-bar";
+import { decodeCheck } from "@/lib/checker";
+import { findReplay, readMemory, saveAnswer, type Memory } from "@/lib/learning";
+import {
+  creditLabel,
+  freeShare,
+  readUsage,
+  recordUsage,
+  remainingChats,
+  type CreditSource,
+  type Usage,
+} from "@/lib/credit";
 import {
   ArrowUp,
   ArrowUpRight,
@@ -53,6 +65,7 @@ export default function ChatWorkspace() {
   const setMode = useChatStore((state) => state.setMode);
   const addMessage = useChatStore((state) => state.addMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
+  const setMessageMeta = useChatStore((state) => state.setMessageMeta);
 
   const [hydrated, setHydrated] = useState(false);
   const [input, setInput] = useState("");
@@ -63,6 +76,9 @@ export default function ChatWorkspace() {
   const [search, setSearch] = useState("");
   const [listening, setListening] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [memory, setMemory] = useState<Memory | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [smartMode, setSmartMode] = useState(true);
 
   const endRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
@@ -71,6 +87,8 @@ export default function ChatWorkspace() {
 
   useEffect(() => {
     setHydrated(true);
+    setMemory(readMemory());
+    setUsage(readUsage());
     const prompt = new URLSearchParams(window.location.search).get("prompt");
     if (prompt) setInput(prompt.slice(0, 1600));
   }, []);
@@ -100,6 +118,26 @@ export default function ChatWorkspace() {
     abortRef.current = controller;
 
     try {
+      // Zero-credit replay first: a question already liked or taught, or one
+      // answered inside the last seven days, never reaches the network.
+      const replay = smartMode ? findReplay(content, mode) : null;
+      if (replay) {
+        const source: CreditSource = replay.source;
+        updateMessage(conversationId, assistantId, replay.answer);
+        setMessageMeta(conversationId, assistantId, {
+          source,
+          credit: creditLabel(source),
+          // A cached answer passed the checker when it was generated; a
+          // correction is the user's own words, so it carries no verdict.
+          checked: source === "cache",
+        });
+        setUsage(recordUsage(source));
+        setPending(false);
+        abortRef.current = null;
+        fieldRef.current?.focus();
+        return;
+      }
+
       const history = [...(current?.messages ?? []), userMessage]
         .slice(-40)
         .map(({ role, content: text }) => ({ role, content: text }));
@@ -111,7 +149,13 @@ export default function ChatWorkspace() {
           "x-anvik-device": deviceId(),
           ...(apiKey ? { "x-google-generative-ai-api-key": apiKey } : {}),
         },
-        body: JSON.stringify({ messages: history, mode, temperature }),
+        body: JSON.stringify({
+          messages: history,
+          mode,
+          temperature,
+          memory: readMemory(),
+          smart: smartMode,
+        }),
         signal: controller.signal,
       });
 
@@ -121,6 +165,9 @@ export default function ChatWorkspace() {
       }
 
       setDemoMode(response.headers.get("x-anvik-demo") === "true");
+      const source = (response.headers.get("x-anvik-source") ?? "model") as CreditSource;
+      const checkHeader = response.headers.get("x-anvik-check");
+      const label = response.headers.get("x-anvik-label") ?? creditLabel(source);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -141,7 +188,21 @@ export default function ChatWorkspace() {
         );
         setError("ANVIK didn’t receive a response from the model.");
       } else {
-        updateMessage(conversationId, assistantId, answer);
+        // The check verdict travels with the answer as a private trailer.
+        const { text, check } = decodeCheck(answer);
+        updateMessage(conversationId, assistantId, text);
+        setMessageMeta(conversationId, assistantId, {
+          source,
+          credit: label,
+          checked: check ? check.ok || check.changed : checkHeader !== "failed",
+          fixed: Boolean(check && !check.ok),
+        });
+        // A partial answer is never cached: replaying half an answer for a
+        // week without knowing it was truncated would be worse than re-asking.
+        if (source === "model" && text.trim() && checkHeader !== "partial") {
+          saveAnswer({ question: content, answer: text, lang: memory?.lang ?? "en", mode });
+        }
+        setUsage(recordUsage(source));
       }
     } catch (cause) {
       if (controller.signal.aborted) {
@@ -291,6 +352,28 @@ export default function ChatWorkspace() {
           {filteredChats.length === 0 && <span className="history-empty">Your conversations will gather here.</span>}
         </div>
 
+        <div className="credit-meter">
+          <div className="credit-meter-head">
+            <span>Credits</span>
+            <b>{usage ? (freeShare(usage) >= 40 ? "Low Use · Unlimited" : "Low") : "Low Use · Unlimited"}</b>
+          </div>
+          <p>
+            {usage
+              ? `Today: ${usage.chats} ${usage.chats === 1 ? "chat" : "chats"} · ${usage.free} from memory · ${
+                  freeShare(usage)
+                }% cost nothing`
+              : "Cached answers and greetings cost nothing."}
+          </p>
+          <div className="credit-bar" aria-hidden="true">
+            <span style={{ width: `${usage ? Math.min(100, freeShare(usage)) : 0}%` }} />
+          </div>
+          <small>
+            {usage && remainingChats(usage) <= 10
+              ? `${remainingChats(usage)} live chats left today. Cached answers still work.`
+              : "Unlimited with cache — repeat answers are free for 7 days."}
+          </small>
+        </div>
+
         <div className="sidebar-bottom">
           <Link href="/image">
             <ImagePlus /> Create an image
@@ -389,6 +472,22 @@ export default function ChatWorkspace() {
                         {copied === message.id ? "Copied" : "Copy"}
                       </button>
                     )}
+                    {message.role === "assistant" && message.content && !pending && (
+                      <FeedbackBar
+                        question={questionFor(activeMessages, message.id)}
+                        answer={message.content}
+                        checked={message.checked}
+                        fixed={message.fixed}
+                        credit={message.credit}
+                        verdict={message.verdict}
+                        taught={message.taught}
+                        onVerdict={(verdict) =>
+                          setMessageMeta(activeChat?.id ?? "", message.id, { verdict })
+                        }
+                        onTaught={() => setMessageMeta(activeChat?.id ?? "", message.id, { taught: true })}
+                        onError={setError}
+                      />
+                    )}
                   </div>
                 </article>
               ))}
@@ -445,7 +544,17 @@ export default function ChatWorkspace() {
                 )}
               </div>
               <div className="composer-hint">
-                <span>Enter to send · Shift + Enter for a new line</span>
+                <button
+                  type="button"
+                  className={`smart-badge${smartMode ? " smart-on" : ""}`}
+                  aria-pressed={smartMode}
+                  onClick={() => setSmartMode((on) => !on)}
+                  title="Smart Mode answers greetings and repeat questions locally, and sends only the last six turns to the model."
+                >
+                  <Sparkles aria-hidden="true" />
+                  {smartMode ? "Smart Mode ON · Saving credits" : "Smart Mode off"}
+                </button>
+                <span className="composer-keys">Enter to send · Shift + Enter for a new line</span>
                 <button type="submit" className="send-button" aria-label="Send message" disabled={!input.trim() || pending}>
                   {pending ? <AudioLines /> : <ArrowUp />}
                 </button>
@@ -464,6 +573,15 @@ export default function ChatWorkspace() {
       </section>
     </div>
   );
+}
+
+/** The user message that produced a given reply. */
+function questionFor(messages: ChatMessage[], replyId: string): string {
+  const index = messages.findIndex((message) => message.id === replyId);
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (messages[i].role === "user") return messages[i].content;
+  }
+  return "";
 }
 
 /** Stable per-browser id for the server's rate limiter (not a fingerprint). */

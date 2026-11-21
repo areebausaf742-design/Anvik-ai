@@ -5,9 +5,19 @@ steps, the fee, the office and the official page — free to start, no account r
 
 ## What works
 
-- **Chat** (`/chat`) — streaming conversations with Fast / Smart / Creative / Coder modes, Markdown
+- **Chat** (`/chat`) — conversations with Fast / Smart / Creative / Coder modes, Markdown
   rendering, conversation search, browser dictation, copy-to-clipboard. History is kept in this
   browser (capped so it can't silently stop saving).
+- **Self-check** — every answer is read by `lib/checker.ts` before it is shown: empty answers,
+  wrong language, broken Markdown, invented links/domains/helplines/statistics/dates, and abuse.
+  A failed answer is regenerated once with the fault named; a passing one gets a green *Checked*
+  tick. No second API call is needed to judge an answer.
+- **Learning** (`lib/learning.ts`) — like / dislike / "Teach ANVIK" under each reply, stored in
+  `anvik-memory` and `anvik-learning` on the device. Keys, passwords, phone numbers, Aadhaar and card
+  numbers are stripped before anything is written. Liked or taught answers replay instantly.
+- **Credit control** (`lib/credit.ts`) — greetings are answered locally, repeat questions for 7 days
+  come from cache, close corpus matches come from the reviewed set, history is summarised to the last
+  six turns, and only `gemini-2.0-flash` is used with an 800-token chat cap.
 - **Image studio** (`/image`) — Gemini image generation when a key is present, automatically falling
   back to the free Pollinations Flux endpoint. The gallery stores **URLs**, capped at 6, never base64.
 - **Code lab** (`/code`) — streams a code draft plus an explanation from `/api/code`.
@@ -37,7 +47,7 @@ Open http://localhost:3000. Without a key the product still runs: Chat answers i
 | --- | --- | --- |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | recommended | The **only** Gemini key name. Used by every route. |
 | `NEXT_PUBLIC_SITE_URL` | in production | Canonical origin for sitemap, robots, metadata and share cards. |
-| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | optional | Mirror questions/answers to Postgres (schema in `lib/supabase.ts`). |
+| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | optional | Mirror questions/answers to Postgres (schema in `lib/supabase.ts`). Also enables the optional `/api/learn` copy of likes and corrections. |
 | `ANVIK_MODEL` / `ANVIK_IMAGE_MODEL` | optional | Model overrides. |
 
 A user can also paste their own key in Settings; it stays in that browser and is sent only with
@@ -55,9 +65,16 @@ memory instead of throwing `EACCES`.
 ```bash
 npm run typecheck   # tsc --noEmit
 npm run lint        # next lint
-npm test            # 14 tests, node:test
+npm test            # 54 tests, node:test
 npm run build       # production build
+npm run measure     # 0-credit share and token saving, from the real functions
 ```
+
+`npm run measure` prints the two numbers the credit work is judged on. On the 41-prompt test day it
+reports **31/41 = 76% of answers at zero credits** (12 local, 13 cache replays, 6 corpus, 10 model
+calls), and a lower bound of **63% with no repeats at all**. A 40-message conversation sends 6.6% of
+the tokens it would otherwise send after summarisation (627 instead of 3,291, an 81% cut), and the
+cut only grows with conversation length.
 
 ## Deploy
 

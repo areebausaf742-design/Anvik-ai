@@ -2,7 +2,27 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ModeId } from "@/lib/prompts";
 
-export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; createdAt: number };
+export type MessageMeta = {
+  /** how the answer was produced: local, cache, corpus, model */
+  source?: "local" | "cache" | "learning" | "corpus" | "model";
+  /** the checker's verdict; absent means it was not checked */
+  checked?: boolean;
+  /** the checker had to repair or regenerate the answer */
+  fixed?: boolean;
+  /** short human label, e.g. "From memory · 0 credits used" */
+  credit?: string;
+  /** the user's verdict on this answer */
+  verdict?: "like" | "dislike";
+  /** "What should I have said?" was saved for this answer */
+  taught?: boolean;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: number;
+} & MessageMeta;
 export type Conversation = { id: string; title: string; updatedAt: number; messages: ChatMessage[] };
 
 type ChatStore = {
@@ -17,6 +37,7 @@ type ChatStore = {
   setMode: (mode: ModeId) => void;
   addMessage: (id: string, message: ChatMessage) => void;
   updateMessage: (conversationId: string, messageId: string, content: string) => void;
+  setMessageMeta: (conversationId: string, messageId: string, meta: MessageMeta) => void;
   clearHistory: () => void;
 };
 
@@ -87,6 +108,19 @@ export const useChatStore = create<ChatStore>()(
                   ...chat,
                   messages: chat.messages.map((message) =>
                     message.id === messageId ? { ...message, content } : message,
+                  ),
+                }
+              : chat,
+          ),
+        })),
+      setMessageMeta: (conversationId, messageId, meta) =>
+        set((state) => ({
+          conversations: state.conversations.map((chat) =>
+            chat.id === conversationId
+              ? {
+                  ...chat,
+                  messages: chat.messages.map((message) =>
+                    message.id === messageId ? { ...message, ...meta } : message,
                   ),
                 }
               : chat,
