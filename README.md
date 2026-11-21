@@ -1,42 +1,42 @@
-# Anvik-ai
+# ANVIK AI
 
-Ask anything — one field, no account, answers in the language you write.
+**One Mind. Infinite Possibilities.** A personal AI universe for conversation, image-making, code, and voice.
 
-The product plan lives in [`docs/ANVIK-PLAN.md`](docs/ANVIK-PLAN.md). Read it first;
-it is the source of truth for positioning, design tokens, the cost model and the
-ten-week schedule, and it records its own corrections and owner amendments (§0, §3.6).
+## What works
 
-## Run
+- Streaming AI conversations with Fast, Smart, Creative, and Coder modes through Google Gemini 2.0 Flash.
+- Local chat history, conversation search, prompt suggestions, voice dictation, and response copy.
+- Image Studio generates images with Gemini Image when a Google API key is available and automatically falls back to the free Pollinations.ai Flux endpoint; no card or separate paid model is required.
+- Code Lab that streams code drafts and explanations.
+- Voice Mode using browser speech recognition (supported browsers will request microphone permission).
+- Adjustable response character and history controls.
+
+Conversation history and preferences are stored in local browser storage. This is a single-device experience; there is no account synchronization or authentication service configured. File selection in Chat currently records selected filenames in the prompt; file contents are not uploaded or analyzed.
+
+## Run locally
+
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
-npm run build
-npm run start        # http://localhost:3000
+cp .env.example .env.local
+npm run dev
 ```
 
-## Live model
+Open [http://localhost:3000](http://localhost:3000).
 
-Set **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) in server-side env only. With it set,
-`/api/ask` streams from the Gemini API (`streamGenerateContent?alt=sse`, 600-token
-output cap, identical cacheable system prompt). Without it, a deterministic corpus
-engine answers so the product stays demonstrable. The key never reaches the client:
-`lib/provider.ts` is imported only by the server route.
+ANVIK uses Google Gemini 2.0 Flash through `@ai-sdk/google`. Get a free Gemini API key at [Google AI Studio](https://aistudio.google.com/app/apikey). To use it locally, set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local`. You can also save a browser-specific key in Settings; that key is stored in this browser's localStorage and sent only with your own AI requests. Never commit API keys.
 
-Optional: `ANVIK_MODEL` (default `gemini-2.5-flash`).
+## Deploy to Vercel
 
-## Guard rails enforced in /api/ask, in this order
+Import this repository in Vercel and deploy with the detected Next.js settings. For live AI in production, open Vercel > Settings > Environment Variables, add `GOOGLE_GENERATIVE_AI_API_KEY` with your Google AI Studio key, and redeploy. Without a key, Chat remains available in Demo Mode with three smart canned replies.
 
-safety route → jailbreak refusal → rate limit → daily quota → **₹500/day global
-spend ceiling** → generation. New answers are public by URL but `noindex` until a
-human reviews them; the home gallery shows reviewed answers only.
-
-## Checks
+## Project checks
 
 ```bash
-npm test          # node:test via tsx — detection, slugs, quota race, ceiling, gallery gate
-npm run typecheck # tsc --noEmit
-npm run lint      # next lint
+npm test
+npm run typecheck
 npm run build
 ```
 
-State lives in `data/db.json` (gitignored) — delete it to reseed.
+The `/api/ask` and existing public-answer routes are retained from the original Anvik experience. Live AI routes `/api/chat`, `/api/code`, `/api/voice`, and `/api/vision` use Google Gemini 2.0 Flash. Image Studio uses Gemini Image (`gemini-2.0-flash-preview-image-generation`) first and automatically falls back to free Pollinations.ai Flux image generation if Gemini is unavailable or the browser/server has no Google API key. Image Studio works without a card and keeps the latest 12 creations in browser localStorage.
