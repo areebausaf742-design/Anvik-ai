@@ -6,7 +6,7 @@
 
 - Streaming AI conversations with Fast, Smart, Creative, and Coder modes through Google Gemini 2.0 Flash.
 - Local chat history, conversation search, prompt suggestions, voice dictation, and response copy.
-- Image Studio UI is retained; Gemini 2.0 Flash does not provide image-file generation, so image generation requires a separate image-generation model.
+- Image Studio generates images with Gemini Image when a Google API key is available and automatically falls back to the free Pollinations.ai Flux endpoint; no card or separate paid model is required.
 - Code Lab that streams code drafts and explanations.
 - Voice Mode using browser speech recognition (supported browsers will request microphone permission).
 - Adjustable response character and history controls.
@@ -39,4 +39,4 @@ npm run typecheck
 npm run build
 ```
 
-The `/api/ask` and existing public-answer routes are retained from the original Anvik experience. Live AI routes `/api/chat`, `/api/code`, `/api/voice`, and `/api/vision` use Google Gemini 2.0 Flash. Gemini 2.0 Flash does not generate image files, so `/api/image` returns a clear unsupported-model response rather than calling a different provider.
+The `/api/ask` and existing public-answer routes are retained from the original Anvik experience. Live AI routes `/api/chat`, `/api/code`, `/api/voice`, and `/api/vision` use Google Gemini 2.0 Flash. Image Studio uses Gemini Image (`gemini-2.0-flash-preview-image-generation`) first and automatically falls back to free Pollinations.ai Flux image generation if Gemini is unavailable or the browser/server has no Google API key. Image Studio works without a card and keeps the latest 12 creations in browser localStorage.

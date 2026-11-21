@@ -1,18 +1,54 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Orb from "@/components/anvik/orb";
 import { ArrowLeft, ArrowRight, ArrowUp, AudioLines, Check, Copy, Download, ImagePlus, Mic, Pause, Play, RefreshCw, Sparkles } from "lucide-react";
 
-const styles = ["Cinematic", "Anime", "3D render", "Cyberpunk", "Photoreal"];
+const styles = ["Cinematic", "Anime", "3D Render", "Cyberpunk", "Realistic"];
 const imageIdeas = ["An iridescent jellyfish drifting through a deep-ocean city, cinematic lighting", "A quiet greenhouse on Mars, dawn light through glass, editorial photography", "A tiny paper boat sailing through a galaxy of ink, dreamlike illustration"];
+const galleryStorageKey = "anvik-image-gallery";
+type GeneratedImage = { image: string; prompt: string; style: string };
+
+function promptWithStyle(value: string, selectedStyle: string) {
+  const basePrompt = value.replace(/,? in (cinematic|anime|3d render|cyberpunk|realistic) style, ultra detailed\\.?$/i, "").trim();
+  return basePrompt ? `${basePrompt}, in ${selectedStyle.toLowerCase()} style, ultra detailed` : "";
+}
 
 function ImageStudio() {
-  const [prompt, setPrompt] = useState(""); const [style, setStyle] = useState(styles[0]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [gallery, setGallery] = useState<{ image: string; prompt: string; style: string }[]>([]);
-  async function generate(event: React.FormEvent) { event.preventDefault(); if (!prompt.trim() || loading) return; setLoading(true); setError(""); try { const response = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json", ...(localStorage.getItem("anvik-gemini-api-key") ? { "x-google-generative-ai-api-key": localStorage.getItem("anvik-gemini-api-key")! } : {}) }, body: JSON.stringify({ prompt, style }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); setGallery((items) => [{ image: result.image, prompt: result.prompt, style: result.style }, ...items]); } catch (issue) { setError(issue instanceof Error ? issue.message : "Something went wrong. Try again."); } finally { setLoading(false); } }
-  return <div className="studio-page image-studio"><div className="studio-eyebrow"><span className="eyebrow-light"/> ANVIK / IMAGE STUDIO</div><h1>See where your<br/><span className="gradient-text">imagination goes.</span></h1><p className="studio-lede">Describe the scene in your head. Give it a style. Watch it take shape.</p><form className="image-prompt-panel" onSubmit={generate}><label htmlFor="image-prompt">YOUR PROMPT</label><textarea id="image-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={1600} placeholder="A glass observatory floating above an ocean of clouds…"/><div className="style-choices" aria-label="Choose an image style">{styles.map((item) => <button type="button" aria-pressed={style === item} className={style === item ? "style-choice style-choice-active" : "style-choice"} onClick={() => setStyle(item)} key={item}>{item}</button>)}</div><div className="image-prompt-footer"><span>{prompt.length}/1,600 · MADE WITH ANVIK</span><button className="button button-bright" disabled={!prompt.trim() || loading}>{loading ? <><span className="button-spinner"/> Bringing it to life</> : <>Generate image <Sparkles/></>}</button></div></form>{error && <p className="studio-error" role="status">{error}</p>}<div className="image-gallery-head"><div><span className="eyebrow">YOUR CANVAS</span><h2>{gallery.length ? "Fresh from your imagination" : "A little inspiration"}</h2></div><span>{gallery.length ? `${gallery.length} CREATION${gallery.length === 1 ? "" : "S"}` : "START WITH A PROMPT"}</span></div>{gallery.length ? <div className="image-gallery">{gallery.map((item, index) => <article className="generated-image" key={`${item.prompt}-${index}`}><Image src={item.image} alt={item.prompt} width={1024} height={1024} unoptimized/><div className="generated-image-meta"><span>{item.style.toUpperCase()}</span><p>{item.prompt}</p><a href={item.image} download={`anvik-creation-${index + 1}.png`} aria-label="Download generated image"><Download/></a></div></article>)}</div> : <div className="image-ideas">{imageIdeas.map((idea, index) => <button key={idea} className={`image-idea idea-${index + 1}`} onClick={() => setPrompt(idea)}><span>0{index + 1} / TRY THIS</span><p>{idea}</p><ArrowRight/></button>)}</div>}</div>;
+  const [prompt, setPrompt] = useState(""); const [style, setStyle] = useState(styles[0]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [gallery, setGallery] = useState<GeneratedImage[]>([]); const [copiedPrompt, setCopiedPrompt] = useState("");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(galleryStorageKey);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) setGallery(parsed.filter((item): item is GeneratedImage => !!item && typeof item === "object" && typeof item.image === "string" && typeof item.prompt === "string" && typeof item.style === "string").slice(0, 12));
+      }
+    } catch { localStorage.removeItem(galleryStorageKey); }
+  }, []);
+  function saveGallery(nextGallery: GeneratedImage[]) {
+    const limited = nextGallery.slice(0, 12);
+    setGallery(limited);
+    try { localStorage.setItem(galleryStorageKey, JSON.stringify(limited)); } catch { setError("Your browser storage is full. Download an image before creating more."); }
+  }
+  async function generate(event: React.FormEvent) {
+    event.preventDefault(); if (!prompt.trim() || loading) return;
+    setLoading(true); setError("");
+    try {
+      const apiKey = localStorage.getItem("anvik-gemini-api-key");
+      const response = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json", ...(apiKey ? { "x-google-generative-ai-api-key": apiKey } : {}) }, body: JSON.stringify({ prompt: prompt.trim(), style }) });
+      const result = await response.json();
+      if (!response.ok || typeof result.image !== "string") throw new Error(result.error ?? "Image generation could not complete.");
+      saveGallery([{ image: result.image, prompt: result.prompt, style: result.style }, ...gallery]);
+    } catch (issue) { setError(issue instanceof Error ? issue.message : "Image generation could not complete. Please try again."); }
+    finally { setLoading(false); }
+  }
+  async function copyPrompt(value: string) {
+    try { await navigator.clipboard.writeText(value); setCopiedPrompt(value); window.setTimeout(() => setCopiedPrompt(""), 1600); }
+    catch { setError("Could not copy the prompt. Please try again."); }
+  }
+  return <div className="studio-page image-studio"><div className="studio-eyebrow"><span className="eyebrow-light"/> ANVIK / IMAGE STUDIO</div><h1>See where your<br/><span className="gradient-text">imagination goes.</span></h1><p className="studio-lede">Describe the scene in your head. Give it a style. Watch it take shape.</p><form className="image-prompt-panel" onSubmit={generate}><label htmlFor="image-prompt">YOUR PROMPT</label><textarea id="image-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={1600} placeholder="A glass observatory floating above an ocean of clouds…"/><div className="style-choices" aria-label="Choose an image style">{styles.map((item) => <button type="button" aria-pressed={style === item} className={style === item ? "style-choice style-choice-active" : "style-choice"} onClick={() => { setStyle(item); setPrompt((current) => promptWithStyle(current, item)); }} key={item}>{item}</button>)}</div><div className="image-prompt-footer"><span>{prompt.length}/1,600 · MADE WITH ANVIK</span><button className="button button-bright" disabled={!prompt.trim() || loading}>{loading ? <><span className="button-spinner"/> Bringing it to life</> : <>Generate image <Sparkles/></>}</button></div></form>{loading && <div className="image-loading" role="status" aria-live="polite"><div className="image-loading-orb"><Orb active size="large"/></div><div className="image-loading-shimmer"/><p>ANVIK is painting your imagination...</p></div>}{error && <p className="studio-error" role="status">{error}</p>}<div className="image-gallery-head"><div><span className="eyebrow">YOUR CANVAS</span><h2>{gallery.length ? "Fresh from your imagination" : "A little inspiration"}</h2></div><span>{gallery.length ? `${gallery.length} CREATION${gallery.length === 1 ? "" : "S"}` : "START WITH A PROMPT"}</span></div>{gallery.length ? <div className="image-gallery">{gallery.map((item, index) => <article className="generated-image" key={`${item.prompt}-${index}`}><Image src={item.image} alt={item.prompt} width={1024} height={1024} unoptimized/><div className="generated-image-meta"><span>{item.style.toUpperCase()}</span><p>{item.prompt}</p><div className="generated-image-actions"><a href={item.image} download={`anvik-creation-${index + 1}.png`} aria-label="Download generated image"><Download/> Download</a><button type="button" onClick={() => void copyPrompt(item.prompt)}><Copy/> {copiedPrompt === item.prompt ? "Copied" : "Copy Prompt"}</button></div></div></article>)}</div> : <div className="image-ideas">{imageIdeas.map((idea, index) => <button key={idea} className={`image-idea idea-${index + 1}`} onClick={() => setPrompt(idea)}><span>0{index + 1} / TRY THIS</span><p>{idea}</p><ArrowRight/></button>)}</div>}</div>;
 }
 
 function CodeLab() {
