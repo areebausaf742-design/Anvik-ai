@@ -30,7 +30,7 @@ import {
   type Memory,
   type Style,
 } from "@/lib/learning";
-import { freeShare, readUsage, SOFT_DAILY_LIMIT, type Usage } from "@/lib/credit";
+import { ALLOWED_MODELS, CHAT_MAX_TOKENS, CODE_MAX_TOKENS, SOFT_DAILY_LIMIT } from "@/lib/credit";
 
 export default function SettingsScreen() {
   const mode = useChatStore((state) => state.mode);
@@ -46,7 +46,6 @@ export default function SettingsScreen() {
 
   const [memory, setMemory] = useState<Memory>(DEFAULT_MEMORY);
   const [learning, setLearning] = useState<Learning>(EMPTY_LEARNING);
-  const [usage, setUsage] = useState<Usage | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
 
   // Show that a key exists without ever putting it back in the input (audit H-3).
@@ -54,7 +53,6 @@ export default function SettingsScreen() {
     setSavedKey(readApiKey());
     setMemory(readMemory());
     setLearning(readLearning());
-    setUsage(readUsage());
   }, []);
 
   const stats = learningStats(learning);
@@ -279,12 +277,12 @@ export default function SettingsScreen() {
             <h2>What ANVIK learned</h2>
             <p>From your likes, dislikes and corrections on this device.</p>
           </div>
-          {usage && (
-            <span className="settings-value">
-              {freeShare(usage)}% free today
-            </span>
-          )}
         </div>
+
+        <p className="privacy-detail">
+          Feedback is a record, not a lookup. A liked or corrected answer is never replayed in place of a
+          fresh one — every question still goes to Gemini.
+        </p>
 
         <div className="learning-stats">
           <div>
@@ -298,10 +296,6 @@ export default function SettingsScreen() {
           <div>
             <b>{stats.dislikes}</b>
             <span>dislikes</span>
-          </div>
-          <div>
-            <b>{stats.replays}</b>
-            <span>replays at 0 credits</span>
           </div>
         </div>
 
@@ -357,28 +351,32 @@ export default function SettingsScreen() {
             <Sparkles />
           </span>
           <div>
-            <h2>Credits and limits</h2>
-            <p>How much of today&apos;s usage reached a model.</p>
+            <h2>Engine and limits</h2>
+            <p>One model, one path, every answer live.</p>
           </div>
         </div>
         <div className="learning-stats">
           <div>
-            <b>{usage?.chats ?? 0}</b>
-            <span>live chats today</span>
+            <b>{ALLOWED_MODELS[0]}</b>
+            <span>the only model used</span>
           </div>
           <div>
-            <b>{usage?.free ?? 0}</b>
-            <span>answers at 0 credits</span>
+            <b>{CHAT_MAX_TOKENS}</b>
+            <span>chat output tokens</span>
+          </div>
+          <div>
+            <b>{CODE_MAX_TOKENS}</b>
+            <span>Code Lab output tokens</span>
           </div>
           <div>
             <b>{SOFT_DAILY_LIMIT}</b>
-            <span>soft daily limit</span>
+            <span>answers per day per device</span>
           </div>
         </div>
         <p className="privacy-detail">
-          Greetings, repeat questions answered in the last 7 days, and answers from the reviewed set never
-          count against the limit. Only <code>gemini-2.0-flash</code> is used, with 800 tokens for chat and
-          1,500 for code.
+          Nothing is answered from a cache, a template or the reviewed corpus. If Gemini cannot be reached
+          you get an honest error, never a substitute answer. Without a key the answer is{" "}
+          <code>Add valid Gemini key in Settings</code> and nothing else.
         </p>
       </section>
 

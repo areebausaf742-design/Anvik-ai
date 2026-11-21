@@ -8,16 +8,18 @@ steps, the fee, the office and the official page — free to start, no account r
 - **Chat** (`/chat`) — conversations with Fast / Smart / Creative / Coder modes, Markdown
   rendering, conversation search, browser dictation, copy-to-clipboard. History is kept in this
   browser (capped so it can't silently stop saving).
-- **Self-check** — every answer is read by `lib/checker.ts` before it is shown: empty answers,
-  wrong language, broken Markdown, invented links/domains/helplines/statistics/dates, and abuse.
-  A failed answer is regenerated once with the fault named; a passing one gets a green *Checked*
-  tick. No second API call is needed to judge an answer.
+- **Every answer comes from Gemini.** One flow, no exceptions: your message → validated → sent to
+  `gemini-2.0-flash` → a safety check → Gemini's answer. There is no corpus lookup, no answer cache
+  and no local reply for greetings in chat. If the model cannot be reached you get
+  `Add valid Gemini key in Settings` with a 401 — never a substitute answer dressed up as one.
+- **Safety check** (`lib/checker.ts`) — the last step before an answer is shown, and it only has
+  three jobs: an empty answer fails, abuse is refused, and an invented helpline number is replaced
+  with the real one. It never rewrites an answer, never changes its topic, and never swaps in text
+  about something else.
 - **Learning** (`lib/learning.ts`) — like / dislike / "Teach ANVIK" under each reply, stored in
   `anvik-memory` and `anvik-learning` on the device. Keys, passwords, phone numbers, Aadhaar and card
-  numbers are stripped before anything is written. Liked or taught answers replay instantly.
-- **Credit control** (`lib/credit.ts`) — greetings are answered locally, repeat questions for 7 days
-  come from cache, close corpus matches come from the reviewed set, history is summarised to the last
-  six turns, and only `gemini-2.0-flash` is used with an 800-token chat cap.
+  numbers are stripped before anything is written. Feedback is a record, not a lookup: it never
+  replaces a fresh answer.
 - **Image studio** (`/image`) — Gemini image generation when a key is present, automatically falling
   back to the free Pollinations Flux endpoint. The gallery stores **URLs**, capped at 6, never base64.
 - **Code lab** (`/code`) — streams a code draft plus an explanation from `/api/code`.
@@ -65,16 +67,23 @@ memory instead of throwing `EACCES`.
 ```bash
 npm run typecheck   # tsc --noEmit
 npm run lint        # next lint
-npm test            # 54 tests, node:test
+npm test            # 46 tests, node:test
 npm run build       # production build
-npm run measure     # 0-credit share and token saving, from the real functions
+npm run verify:chat # live check: do real answers come from Gemini?
 ```
 
-`npm run measure` prints the two numbers the credit work is judged on. On the 41-prompt test day it
-reports **31/41 = 76% of answers at zero credits** (12 local, 13 cache replays, 6 corpus, 10 model
-calls), and a lower bound of **63% with no repeats at all**. A 40-message conversation sends 6.6% of
-the tokens it would otherwise send after summarisation (627 instead of 3,291, an 81% cut), and the
-cut only grows with conversation length.
+`npm run verify:chat` sends the five reference prompts ("hii", "what is car?", "what is AI?",
+"write python code for calculator", "what is photosynthesis?") to a running `/api/chat` and fails if
+any answer is off-topic, is corpus text, or does not report `X-ANVIK-SOURCE: gemini`. It needs a real
+key:
+
+```bash
+npm run verify:chat -- --key AIza... --url https://your-deployment
+```
+
+`tests/route.test.ts` guards the same property statically: the chat route and the composer are
+checked for any import of the corpus, the cache or a local-answer path, so the shortcut cannot be
+wired back in without a failing test.
 
 ## Deploy
 

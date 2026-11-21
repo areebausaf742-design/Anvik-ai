@@ -27,8 +27,8 @@ function Sphere({ active }: { active: boolean }) {
       <mesh ref={core}>
         <icosahedronGeometry args={[1.02, 3]} />
         <MeshDistortMaterial
-          color="#2f6b56"
-          emissive="#123a2e"
+          color="#7d6bff"
+          emissive="#1a0f3d"
           emissiveIntensity={0.35}
           roughness={0.34}
           metalness={0.18}
@@ -38,14 +38,14 @@ function Sphere({ active }: { active: boolean }) {
       </mesh>
       <mesh ref={ring} scale={1.32}>
         <torusGeometry args={[1, 0.004, 8, 128]} />
-        <meshBasicMaterial color="#1f5f4b" transparent opacity={0.34} />
+        <meshBasicMaterial color="#7d6bff" transparent opacity={0.34} />
       </mesh>
       <mesh rotation={[1.15, 0.3, 0.2]} scale={1.52}>
         <torusGeometry args={[1, 0.0025, 6, 96]} />
-        <meshBasicMaterial color="#8a8577" transparent opacity={0.22} />
+        <meshBasicMaterial color="#a993ff" transparent opacity={0.22} />
       </mesh>
       <pointLight color="#ffffff" intensity={9} distance={6} position={[2, 2.4, 3]} />
-      <pointLight color="#4e8f77" intensity={3} distance={5} position={[-2, -1.4, 1]} />
+      <pointLight color="#8f7bff" intensity={3} distance={5} position={[-2, -1.4, 1]} />
     </Float>
   );
 }

@@ -9,16 +9,7 @@ import Markdown from "@/components/anvik/markdown";
 import { readApiKey } from "@/lib/client-key";
 import FeedbackBar from "@/components/anvik/feedback-bar";
 import { decodeCheck } from "@/lib/checker";
-import { findReplay, readMemory, saveAnswer, type Memory } from "@/lib/learning";
-import {
-  creditLabel,
-  freeShare,
-  readUsage,
-  recordUsage,
-  remainingChats,
-  type CreditSource,
-  type Usage,
-} from "@/lib/credit";
+import { readMemory, type Memory } from "@/lib/learning";
 import {
   ArrowUp,
   ArrowUpRight,
@@ -77,8 +68,6 @@ export default function ChatWorkspace() {
   const [listening, setListening] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [memory, setMemory] = useState<Memory | null>(null);
-  const [usage, setUsage] = useState<Usage | null>(null);
-  const [smartMode, setSmartMode] = useState(true);
 
   const endRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
@@ -88,7 +77,6 @@ export default function ChatWorkspace() {
   useEffect(() => {
     setHydrated(true);
     setMemory(readMemory());
-    setUsage(readUsage());
     const prompt = new URLSearchParams(window.location.search).get("prompt");
     if (prompt) setInput(prompt.slice(0, 1600));
   }, []);
@@ -118,26 +106,6 @@ export default function ChatWorkspace() {
     abortRef.current = controller;
 
     try {
-      // Zero-credit replay first: a question already liked or taught, or one
-      // answered inside the last seven days, never reaches the network.
-      const replay = smartMode ? findReplay(content, mode) : null;
-      if (replay) {
-        const source: CreditSource = replay.source;
-        updateMessage(conversationId, assistantId, replay.answer);
-        setMessageMeta(conversationId, assistantId, {
-          source,
-          credit: creditLabel(source),
-          // A cached answer passed the checker when it was generated; a
-          // correction is the user's own words, so it carries no verdict.
-          checked: source === "cache",
-        });
-        setUsage(recordUsage(source));
-        setPending(false);
-        abortRef.current = null;
-        fieldRef.current?.focus();
-        return;
-      }
-
       const history = [...(current?.messages ?? []), userMessage]
         .slice(-40)
         .map(({ role, content: text }) => ({ role, content: text }));
@@ -154,7 +122,6 @@ export default function ChatWorkspace() {
           mode,
           temperature,
           memory: readMemory(),
-          smart: smartMode,
         }),
         signal: controller.signal,
       });
@@ -164,10 +131,8 @@ export default function ChatWorkspace() {
         throw new Error(issue?.detail ?? issue?.error ?? "ANVIK could not connect. Please try again.");
       }
 
-      setDemoMode(response.headers.get("x-anvik-demo") === "true");
-      const source = (response.headers.get("x-anvik-source") ?? "model") as CreditSource;
       const checkHeader = response.headers.get("x-anvik-check");
-      const label = response.headers.get("x-anvik-label") ?? creditLabel(source);
+      const label = response.headers.get("x-anvik-label") ?? "From Gemini";
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -188,21 +153,15 @@ export default function ChatWorkspace() {
         );
         setError("ANVIK didn’t receive a response from the model.");
       } else {
-        // The check verdict travels with the answer as a private trailer.
+        // The safety verdict travels with the answer as a private trailer.
         const { text, check } = decodeCheck(answer);
         updateMessage(conversationId, assistantId, text);
         setMessageMeta(conversationId, assistantId, {
-          source,
+          source: "gemini",
           credit: label,
-          checked: check ? check.ok || check.changed : checkHeader !== "failed",
-          fixed: Boolean(check && !check.ok),
+          checked: check ? check.ok || check.changed : checkHeader === "partial",
+          fixed: false,
         });
-        // A partial answer is never cached: replaying half an answer for a
-        // week without knowing it was truncated would be worse than re-asking.
-        if (source === "model" && text.trim() && checkHeader !== "partial") {
-          saveAnswer({ question: content, answer: text, lang: memory?.lang ?? "en", mode });
-        }
-        setUsage(recordUsage(source));
       }
     } catch (cause) {
       if (controller.signal.aborted) {
@@ -354,24 +313,14 @@ export default function ChatWorkspace() {
 
         <div className="credit-meter">
           <div className="credit-meter-head">
-            <span>Credits</span>
-            <b>{usage ? (freeShare(usage) >= 40 ? "Low Use · Unlimited" : "Low") : "Low Use · Unlimited"}</b>
+            <span>Engine</span>
+            <b>Powered by Gemini</b>
           </div>
-          <p>
-            {usage
-              ? `Today: ${usage.chats} ${usage.chats === 1 ? "chat" : "chats"} · ${usage.free} from memory · ${
-                  freeShare(usage)
-                }% cost nothing`
-              : "Cached answers and greetings cost nothing."}
-          </p>
+          <p>All answers live. Nothing is replayed from a cache or a template.</p>
           <div className="credit-bar" aria-hidden="true">
-            <span style={{ width: `${usage ? Math.min(100, freeShare(usage)) : 0}%` }} />
+            <span />
           </div>
-          <small>
-            {usage && remainingChats(usage) <= 10
-              ? `${remainingChats(usage)} live chats left today. Cached answers still work.`
-              : "Unlimited with cache — repeat answers are free for 7 days."}
-          </small>
+          <small>gemini-2.0-flash · every message is a fresh model call</small>
         </div>
 
         <div className="sidebar-bottom">
@@ -544,16 +493,10 @@ export default function ChatWorkspace() {
                 )}
               </div>
               <div className="composer-hint">
-                <button
-                  type="button"
-                  className={`smart-badge${smartMode ? " smart-on" : ""}`}
-                  aria-pressed={smartMode}
-                  onClick={() => setSmartMode((on) => !on)}
-                  title="Smart Mode answers greetings and repeat questions locally, and sends only the last six turns to the model."
-                >
+                <span className="smart-badge smart-on" title="Every message is answered by gemini-2.0-flash.">
                   <Sparkles aria-hidden="true" />
-                  {smartMode ? "Smart Mode ON · Saving credits" : "Smart Mode off"}
-                </button>
+                  Powered by Gemini
+                </span>
                 <span className="composer-keys">Enter to send · Shift + Enter for a new line</span>
                 <button type="submit" className="send-button" aria-label="Send message" disabled={!input.trim() || pending}>
                   {pending ? <AudioLines /> : <ArrowUp />}

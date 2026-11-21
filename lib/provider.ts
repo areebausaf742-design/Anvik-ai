@@ -13,6 +13,14 @@
  */
 
 /** The one model id for the product. Every route reads it from here. */
+/**
+ * Base URL for the Gemini endpoint. Overridable so the answer path can be
+ * exercised against a local stand-in during verification — never set in
+ * production, where it must stay the real API.
+ */
+export const GEMINI_BASE_URL =
+  process.env.GEMINI_BASE_URL?.trim() || "https://generativelanguage.googleapis.com/v1beta";
+
 export const AI_MODEL = process.env.ANVIK_MODEL ?? "gemini-2.0-flash";
 export const LIVE_MODEL = AI_MODEL;
 
