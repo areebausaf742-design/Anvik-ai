@@ -40,6 +40,9 @@ export type AnswerRow = {
   isPublic: boolean;
   publishedAt: number;
   moderationState: ModerationState;
+  /** Owner spec 21 Nov: /j/ pages stay noindex and out of the gallery until
+   *  a human reviews them. Seed corpus is authored = reviewed. */
+  reviewed: boolean;
   lang: Lang;
   slug: string;
 };
@@ -64,8 +67,10 @@ type DB = {
 export const FREE_DAILY = 3;
 export const RATE_PER_MIN = 6;
 export const RATE_PER_HOUR = 20;
+/** Plan §7.4 control 1: global daily model-spend ceiling, in paise (₹500). */
+export const DAILY_CEILING_PAISE = 50000;
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = path.join(process.cwd(), process.env.ANVIK_DATA_DIR ?? "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 const g = globalThis as unknown as { __anvikDb?: DB; __anvikLock?: Promise<unknown> };
@@ -78,14 +83,14 @@ function seed(): DB {
   const db: DB = { questions: [], answers: [], quota: {}, moderation: [], idempotency: {} };
   const now = Date.now();
   CORPUS.forEach((entry: CorpusEntry, i: number) => {
-    const slug = slugify(entry.questions.hi);
+    const slug = slugify(entry.questions.en);
     const qId = `q-seed-${entry.id}`;
     const aId = `a-seed-${entry.id}`;
     db.questions.push({
       id: qId,
       deviceId: "seed",
-      text: entry.questions.hi,
-      lang: "hi",
+      text: entry.questions.en,
+      lang: "en",
       slug,
       idempotencyKey: null,
       createdAt: now - (CORPUS.length - i) * 3600_000,
@@ -94,20 +99,29 @@ function seed(): DB {
     db.answers.push({
       id: aId,
       questionId: qId,
-      body: entry.answers.hi,
+      body: entry.answers.en,
       model: "seed-corpus",
       promptTokens: 2270,
-      outputTokens: estimateTokens(entry.answers.hi),
+      outputTokens: estimateTokens(entry.answers.en),
       cachedTokens: 2200,
       costPaise: 12,
       latencyMs: 4200,
       isPublic: true,
       publishedAt: now - (CORPUS.length - i) * 3600_000,
       moderationState: "clean",
-      lang: "hi",
+      reviewed: true,
+      lang: "en",
       slug,
     });
   });
+  return db;
+}
+
+function migrate(db: DB): DB {
+  db.answers = db.answers.map((a) => ({
+    ...a,
+    reviewed: a.reviewed ?? a.model === "seed-corpus",
+  }));
   return db;
 }
 
@@ -115,12 +129,12 @@ function load(): DB {
   if (g.__anvikDb) return g.__anvikDb;
   if (!existsSync(DB_FILE)) {
     mkdirSync(DATA_DIR, { recursive: true });
-    const db = seed();
+    const db = migrate(seed());
     writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
     g.__anvikDb = db;
     return db;
   }
-  const db = JSON.parse(readFileSync(DB_FILE, "utf8")) as DB;
+  const db = migrate(JSON.parse(readFileSync(DB_FILE, "utf8")) as DB);
   g.__anvikDb = db;
   return db;
 }
@@ -157,6 +171,27 @@ export const store = {
     return load()
       .answers.filter((a) => a.isPublic && a.moderationState !== "removed")
       .sort((a, b) => b.publishedAt - a.publishedAt);
+  },
+
+  /** Reviewed public answers joined to their question text, newest first.
+   *  The gallery shows only these (owner spec, 21 Nov). */
+  reviewedWithQuestions(): { answer: AnswerRow; question: string }[] {
+    const db = load();
+    return store
+      .publicAnswers()
+      .filter((a) => a.reviewed)
+      .map((answer) => ({
+        answer,
+        question: db.questions.find((q) => q.id === answer.questionId)?.text ?? "",
+      }));
+  },
+
+  /** Plan §7.4 control 1: model spend so far today, in paise. */
+  todayCostPaise(): number {
+    const day = dayKey();
+    return load()
+      .answers.filter((a) => new Date(a.publishedAt).toISOString().slice(0, 10) === day)
+      .reduce((sum, a) => sum + a.costPaise, 0);
   },
 
   /** Public answers joined to their question text, newest first. */
@@ -271,9 +306,7 @@ export function normTokens(text: string): Set<string> {
 
 /** Corpus retrieval for demo mode: same overlap maths, looser threshold. */
 export function corpusMatch(question: string, threshold = 0.34) {
-  // Imported lazily to keep this module dependency-light at type level.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { CORPUS: corpus } = require("./corpus") as typeof import("./corpus");
+  const corpus = CORPUS;
   const q = normTokens(question);
   let best: { entry: (typeof corpus)[number]; score: number } | null = null;
   for (const entry of corpus) {

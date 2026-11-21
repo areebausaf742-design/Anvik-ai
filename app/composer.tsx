@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * §4.1/4.2 v2. Elevated composer panel (hairline + shadow, focus ring in
- * green), Ask inside the panel, quota beside it, text-only chips below that
- * fill and ask in one tap. Skeleton in one paint, streamed answer with a live
- * caret, Stop from the first token, typed question never lost on failure.
- * Chrome is English; answer language follows the asker.
+ * Composer v3: rounded 22px panel, soft shadow, visible focus ring, Ask inside.
+ * Four example chips FILL the input (owner spec) — they never submit.
+ * Skeleton in one paint, streamed answer, Stop from first token, typed
+ * question never lost on failure, one silent retry on a network blip.
  */
 
 const EXAMPLES = [
@@ -18,12 +17,10 @@ const EXAMPLES = [
 ];
 
 const CHIPS = [
-  "How do I improve my credit score?",
-  "My PM-KISAN instalment is stuck",
-  "A GST notice arrived — what now?",
+  "Improve my credit score",
+  "PM-KISAN instalment stuck",
+  "GST notice arrived — what now?",
   "Link Aadhaar with PAN",
-  "Online fraud: get my money back",
-  "PM Awas Yojana eligibility",
 ];
 
 type Phase = "idle" | "thinking" | "streaming" | "done" | "error" | "stopped";
@@ -33,7 +30,6 @@ type Meta = {
   latencyMs?: number;
   costPaise?: number;
   model?: string;
-  demo?: boolean;
   existingSlug?: string;
   langLabel?: string;
 };
@@ -67,7 +63,7 @@ export default function Composer() {
     const el = areaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 8 * 32 + 14)}px`;
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 88), 8 * 27 + 16)}px`;
   }, []);
 
   const pushHistory = (question: string, slug: string) => {
@@ -134,7 +130,6 @@ export default function Composer() {
                 latencyMs: ev.latencyMs as number,
                 costPaise: ev.costPaise as number,
                 model: ev.model as string,
-                demo: ev.demo as boolean,
               }));
               setPhase("done");
               setQ("");
@@ -196,7 +191,6 @@ export default function Composer() {
           id="q"
           ref={areaRef}
           className="field"
-          rows={3}
           autoFocus
           value={q}
           placeholder={EXAMPLES[ph]}
@@ -221,16 +215,18 @@ export default function Composer() {
         </div>
       </form>
 
-      <div className="chips" role="group" aria-label="Try one of these">
+      <div className="chips" role="group" aria-label="Example questions — tap to fill the box">
         {CHIPS.map((c) => (
           <button
             key={c}
             type="button"
             className="chip"
-            disabled={busy}
             onClick={() => {
               setQ(c);
-              void ask(c, 0);
+              requestAnimationFrame(() => {
+                grow();
+                areaRef.current?.focus();
+              });
             }}
           >
             {c}
@@ -255,9 +251,7 @@ export default function Composer() {
           )}
           <div className="answer-tools">
             {phase === "streaming" && (
-              <button className="stop-btn" onClick={stop}>
-                Stop
-              </button>
+              <button onClick={stop}>Stop</button>
             )}
             {phase === "done" && meta.slug && (
               <>
@@ -267,9 +261,9 @@ export default function Composer() {
             )}
             {(phase === "done" || phase === "stopped") && meta.latencyMs !== undefined && (
               <span>
-                {meta.existingSlug ? "answer already existed · " : ""}
-                {meta.demo ? "demo engine" : meta.model} · {(meta.latencyMs / 1000).toFixed(1)}s
-                {meta.costPaise !== undefined && ` · est. cost ₹${(meta.costPaise / 100).toFixed(2)}`}
+                {meta.existingSlug ? "existing reviewed answer · " : ""}
+                {meta.model} · {(meta.latencyMs / 1000).toFixed(1)}s
+                {meta.costPaise !== undefined && ` · est. ₹${(meta.costPaise / 100).toFixed(2)}`}
               </span>
             )}
           </div>

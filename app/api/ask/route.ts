@@ -1,8 +1,16 @@
 import { cookies } from "next/headers";
 import { detectLanguage, langLabel, type Lang } from "@/lib/detect";
 import { CORPUS, FALLBACK, JAILBREAK_RE, SELFHARM_RE, SELFHARM_RESPONSE } from "@/lib/corpus";
-import { store, estimateTokens, estimateCostPaise, RATE_PER_MIN, RATE_PER_HOUR, corpusMatch } from "@/lib/store";
-import { streamAnswer } from "@/lib/provider";
+import {
+  store,
+  estimateTokens,
+  estimateCostPaise,
+  RATE_PER_MIN,
+  RATE_PER_HOUR,
+  DAILY_CEILING_PAISE,
+  corpusMatch,
+} from "@/lib/store";
+import { openLive, parseLive, streamCorpus, LIVE_MODEL, liveKey, type Usage } from "@/lib/provider";
 import { slugify } from "@/lib/transliterate";
 
 export const runtime = "nodejs";
@@ -29,6 +37,15 @@ function rateOk(ip: string): boolean {
   return true;
 }
 
+/** Cost in paise from real token counts at Flash-class prices, ₹95/$ (§7.2). */
+function costFromUsage(u: Usage): number | null {
+  if (u.outputTokens === undefined) return null;
+  const cached = u.cachedTokens ?? 0;
+  const uncached = Math.max(0, (u.promptTokens ?? 0) - cached);
+  const usd = (cached * 0.03 + uncached * 0.3 + u.outputTokens * 2.5) / 1_000_000;
+  return Math.max(1, Math.round(usd * 95 * 100));
+}
+
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
   const jar = await cookies();
@@ -49,8 +66,8 @@ export async function POST(req: Request) {
 
   const lang: Lang = detectLanguage(question);
 
-  /* §6.5: safety routes run BEFORE rate limits and quota. A cry for help must
-     never be answered with "too many requests". */
+  /* Guard order is fixed (owner spec + §6.5): safety, jailbreak, rate, quota,
+     ceiling. A cry for help is never rate-limited and never quota-limited. */
   if (SELFHARM_RE.test(question)) {
     await store.logModeration({
       questionText: question.slice(0, 200),
@@ -59,7 +76,9 @@ export async function POST(req: Request) {
       action: "helpline-routed",
     });
     await store.recordQuestion({ deviceId, text: question, lang, slug: null, idempotencyKey: idemKey || null, status: "refused" });
-    return stream(req, SELFHARM_RESPONSE[lang], lang, deviceId, null, { model: "safety-route" });
+    return stream(req, streamCorpus(SELFHARM_RESPONSE[lang], req.signal), lang, deviceId, null, {
+      model: "safety-route",
+    });
   }
 
   if (JAILBREAK_RE.test(question)) {
@@ -82,49 +101,81 @@ export async function POST(req: Request) {
       402,
     );
 
+  /* Plan §7.4 control 1: global daily spend ceiling, checked before any spend. */
+  if (store.todayCostPaise() >= DAILY_CEILING_PAISE)
+    return json(
+      {
+        message: "We’ve reached today’s spend ceiling. Every public answer stays readable; new questions reopen tomorrow.",
+        code: "ceiling",
+      },
+      503,
+    );
+
   /* idempotency: a retry after a network blip must not double-charge (§5.2) */
   if (idemKey) {
     const prior = store.idempotentAnswer(idemKey);
     if (prior) {
-      return stream(req, prior.body, lang, deviceId, quotaLeft, {
+      return stream(req, streamCorpus(prior.body, req.signal), lang, deviceId, quotaLeft, {
         existingSlug: prior.slug,
         model: prior.model,
-        fast: true,
       });
     }
   }
 
-  /* §4.3 duplicate check before generation */
+  /* §4.3 duplicate check: reuse a reviewed public answer only when its language
+     matches the asker's — a Hindi asker never gets served an English body. */
   const dup = store.findPublicMatch(question);
-  if (dup) {
+  if (dup && dup.reviewed && dup.lang === lang) {
     await store.recordQuestion({ deviceId, text: question, lang, slug: dup.slug, idempotencyKey: idemKey || null, status: "duplicate" });
-    return stream(req, dup.body, lang, deviceId, quotaLeft, { existingSlug: dup.slug, model: "corpus" });
+    return stream(req, streamCorpus(dup.body, req.signal), lang, deviceId, quotaLeft, {
+      existingSlug: dup.slug,
+      model: dup.model,
+    });
   }
 
-  /* demo retrieval; live provider from Week 1 */
+  /* Live provider first; corpus engine as fallback so the product never dies
+     on a missing key or a provider outage. */
+  if (liveKey()) {
+    try {
+      const up = await openLive(question, req.signal);
+      if (up.ok && up.body) {
+        const usage: Usage = {};
+        return stream(req, parseLive(up.body, usage, req.signal), lang, deviceId, quotaLeft, {
+          idemKey,
+          question,
+          usage,
+          model: LIVE_MODEL,
+        });
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      /* fall through to corpus */
+    }
+  }
+
   const hit = corpusMatch(question);
   const text = hit ? hit.answers[lang] : FALLBACK[lang];
-  const matchedEntry = hit ? CORPUS.find((c) => c.id === hit.id) : null;
-
-  return stream(req, text, lang, deviceId, quotaLeft, {
+  const matched = hit ? CORPUS.find((c) => c.id === hit.id) : null;
+  return stream(req, streamCorpus(text, req.signal), lang, deviceId, quotaLeft, {
     idemKey,
     question,
-    matchedQuestion: matchedEntry?.questions.hi ?? question,
+    matchedQuestion: matched?.questions[lang] ?? matched?.questions.en ?? question,
+    model: hit ? "corpus" : "corpus-fallback",
   });
 }
 
 type StreamOpts = {
   existingSlug?: string;
   model?: string;
-  fast?: boolean;
   idemKey?: string;
   question?: string;
   matchedQuestion?: string;
+  usage?: Usage;
 };
 
 async function stream(
   req: Request,
-  text: string,
+  source: AsyncGenerator<string>,
   lang: Lang,
   deviceId: string,
   quotaLeft: number | null,
@@ -141,7 +192,8 @@ async function stream(
       let out = "";
       let aborted = false;
       try {
-        for await (const piece of streamAnswer(text, req.signal)) {
+        for await (const piece of source) {
+          if (req.signal.aborted) throw new DOMException("aborted", "AbortError");
           out += piece;
           send(controller, { t: "tok", s: piece });
         }
@@ -154,15 +206,15 @@ async function stream(
         }
       }
       const latencyMs = Math.round(performance.now() - started);
-      const outputTokens = estimateTokens(out);
-      const costPaise = estimateCostPaise(outputTokens);
-      const model = opts.model ?? "demo-engine";
+      const outputTokens = opts.usage?.outputTokens ?? estimateTokens(out);
+      const costPaise = costFromUsage(opts.usage ?? {}) ?? estimateCostPaise(outputTokens);
+      const model = opts.model ?? "corpus";
 
       if (!aborted && out.length > 0) {
         const baseSlug = opts.existingSlug ?? slugify(opts.matchedQuestion ?? opts.question ?? out.slice(0, 40));
         let slug = baseSlug;
-        if (!opts.existingSlug && store.bySlug(slug)) slug = `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
         if (!opts.existingSlug && opts.question) {
+          if (store.bySlug(slug)) slug = `${baseSlug}-${Date.now().toString(36).slice(-4)}`;
           const q = await store.recordQuestion({
             deviceId,
             text: opts.question,
@@ -175,20 +227,21 @@ async function stream(
             questionId: q.id,
             body: out,
             model,
-            promptTokens: 2270,
+            promptTokens: opts.usage?.promptTokens ?? 2270,
             outputTokens,
-            cachedTokens: 2200,
+            cachedTokens: opts.usage?.cachedTokens ?? 0,
             costPaise,
             latencyMs,
             isPublic: true,
             moderationState: "clean",
+            reviewed: false, // noindex and out of the gallery until a human reviews
             lang,
             slug,
           });
           if (opts.idemKey) await store.bindIdempotency(opts.idemKey, a.id);
           slug = a.slug;
         }
-        send(controller, { t: "done", slug, latencyMs, costPaise, outputTokens, model, demo: model === "demo-engine" });
+        send(controller, { t: "done", slug, latencyMs, costPaise, outputTokens, model });
       } else if (aborted) {
         send(controller, { t: "stop", latencyMs });
       }

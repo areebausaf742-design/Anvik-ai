@@ -10,7 +10,7 @@ const LETTERS = /[a-zA-Zऀ-ॿ]/g;
 
 /** ~90 romanised Hindi function words / inflections (plan §6.1). */
 const HINGLISH = new Set([
-  "kya","kaise","kaisa","kaisi","hai","hain","hoon","tha","thi","the","kaun","kab",
+  "kya","kaise","kaisa","kaisi","hai","hain","hoon","tha","thi","kaun","kab",
   "kahan","kyu","kyon","kyunki","mera","meri","mere","tera","teri","tere","aapka",
   "aapki","aap","hamara","humara","yeh","woh","karo","karna","chahiye","batao",
   "bataiye","samjhao","sahi","galat","paisa","paise","sarkar","sarkari","kitna",
