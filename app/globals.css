@@ -7,7 +7,7 @@
   --ink: #14120f;
   --ink-soft: #4a453d;
   --rule: #e0d8cb;
-  --green: #1f5f4b;
+  --green: #1F5F4B;
   --green-pressed: #17493a;
   --saffron: #c8791a;
   --r-sm: 14px;
@@ -16,6 +16,8 @@
   --f-display: "Fraunces Variable", "Mukta", serif;
   --f-ui: "Manrope Variable", "Mukta", sans-serif;
   --f-body: "Mukta", sans-serif;
+
+  --shadow-float: 0 1px 2px rgba(20, 18, 15, 0.05), 0 12px 32px -12px rgba(20, 18, 15, 0.14);
 }
 
 * { box-sizing: border-box; }
@@ -27,8 +29,8 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--f-body);
-  font-size: 18px;
-  line-height: 1.75; /* Devanagari needs air: matras collide at Latin defaults (§3.4) */
+  font-size: 17px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -43,21 +45,21 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   border-radius: 4px;
 }
 
-/* ---------- chrome: wordmark + one link (§3.7 translation table) ---------- */
+/* ---------- chrome: wordmark + one link ---------- */
 
 .site-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  max-width: 680px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 28px 20px 0;
+  padding: 26px 24px 0;
 }
 
 .wordmark {
   font-family: var(--f-display);
   font-weight: 500;
-  font-size: 28px;
+  font-size: 27px;
   line-height: 1.1;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -65,7 +67,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 .wordmark:hover { text-decoration: none; }
 
-/* The single saffron flourish: home only (§3.3 rule 1, §3.7). */
+/* The single saffron flourish: home only. */
 .site-head[data-home] .wordmark::after {
   content: "";
   display: block;
@@ -84,28 +86,74 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .site-head nav a:hover { color: var(--green); }
 
 .site-foot {
-  max-width: 680px;
-  margin: 64px auto 0;
-  padding: 24px 20px 48px;
+  max-width: 880px;
+  margin: 72px auto 0;
+  padding: 22px 24px 44px;
   border-top: 1px solid var(--rule);
   font-family: var(--f-ui);
   font-size: 14px;
   color: var(--ink-soft);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
+  gap: 8px 22px;
 }
 .site-foot a { color: var(--ink-soft); }
 .site-foot a:hover { color: var(--green); }
 
-main { min-height: 70vh; }
+main { min-height: 72vh; }
 
-/* ---------- 4.1 Ask: the field is a rule on paper, not a floating card ---------- */
+/* ---------- hero: statement, then the task ---------- */
 
-.ask-wrap {
-  max-width: 680px;
+.hero {
+  max-width: 760px;
   margin: 0 auto;
-  padding: 11vh 20px 0;
+  padding: 7vh 24px 0;
+  text-align: center;
+}
+
+.status-line {
+  margin: 0 0 18px;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.hero h1 {
+  margin: 0 auto;
+  max-width: 15ch;
+  font-family: var(--f-display);
+  font-weight: 560;
+  font-size: clamp(38px, 6.4vw, 58px);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.hero .sub {
+  margin: 16px auto 0;
+  max-width: 46ch;
+  color: var(--ink-soft);
+  font-size: 17px;
+}
+
+/* ---------- composer: our elevated surface (hairline + shadow, no gradient,
+             no icon cluster inside — §3.6 amendments) ---------- */
+
+.composer {
+  margin: 34px auto 0;
+  max-width: 720px;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-float);
+  padding: 18px 18px 14px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.composer:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 1px 2px rgba(20, 18, 15, 0.05), 0 16px 40px -14px rgba(31, 95, 75, 0.22);
 }
 
 .field {
@@ -113,53 +161,52 @@ main { min-height: 70vh; }
   width: 100%;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--ink-soft);
-  border-radius: 0;
   resize: none;
   overflow: hidden;
-  padding: 8px 2px 14px;
+  padding: 4px 4px 10px;
   color: var(--ink);
   font-family: var(--f-body);
-  font-size: 20px;
-  line-height: 1.75;
+  font-size: 19px;
+  line-height: 1.65;
   caret-color: var(--green);
-  transition: border-color 140ms ease;
 }
-.field::placeholder { color: var(--ink-soft); opacity: 0.75; }
-.field:focus {
-  outline: none;
-  border-bottom: 2px solid var(--green);
-  padding-bottom: 13px;
+.field::placeholder { color: var(--ink-soft); opacity: 0.7; }
+.field:focus { outline: none; }
+[data-screen="claim"] .field {
+  border: 0;
+  border-bottom: 1px solid var(--ink-soft);
+  border-radius: 0;
+  text-align: center;
 }
-/* Claim screen: its one saffron event is the focus underline (§3.7). */
 [data-screen="claim"] .field:focus { border-bottom-color: var(--saffron); }
 
-.ask-row {
+.composer-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 22px;
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
 }
 
 .quota-line {
   font-family: var(--f-ui);
-  font-size: 15px;
+  font-size: 14px;
   color: var(--ink-soft);
-  min-height: 24px;
+  min-height: 22px;
 }
 
 .ask-btn {
-  min-width: 168px;
-  min-height: 56px; /* §3.5: 56px primary target */
-  padding: 0 32px;
+  min-width: 132px;
+  min-height: 48px;
+  padding: 0 28px;
   border: 0;
   border-radius: var(--r-sm);
   background: var(--green);
   color: var(--paper);
-  font-family: var(--f-body);
-  font-size: 19px;
-  font-weight: 600;
+  font-family: var(--f-ui);
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
   transition: background 120ms ease, transform 80ms ease;
@@ -168,52 +215,49 @@ main { min-height: 70vh; }
 .ask-btn:active { transform: translateY(1px); }
 .ask-btn:disabled { opacity: 0.55; cursor: default; }
 
-@media (max-width: 560px) {
-  .ask-row { flex-direction: column-reverse; align-items: stretch; }
-  .ask-btn { width: 100%; }
-  .quota-line { text-align: center; }
-}
+/* ---------- suggestion chips: text-only, ours (§3.6 amendments) ---------- */
 
-/* ---------- corpus proof below the fold (§4.1, §3.6: text, never stock) ---------- */
-
-.corpus {
-  max-width: 680px;
-  margin: 72px auto 0;
-  padding: 0 20px;
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 22px auto 0;
+  max-width: 720px;
+  padding: 0 24px;
 }
-.corpus h2 {
-  margin: 0 0 4px;
-  font-family: var(--f-ui);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.chip {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
   color: var(--ink-soft);
+  font-family: var(--f-ui);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
-.corpus ul { list-style: none; margin: 0; padding: 0; }
-.corpus li { border-top: 1px solid var(--rule); }
-.corpus li:last-child { border-bottom: 1px solid var(--rule); }
-.corpus a {
-  display: block;
-  padding: 14px 2px;
-  color: var(--ink);
-  font-size: 18px;
-  min-height: 48px; /* §3.5 */
+.chip:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--paper-sunken);
 }
-.corpus a:hover { color: var(--green); text-decoration: none; }
-.corpus a span { display: block; color: var(--ink-soft); font-size: 15px; line-height: 1.6; }
 
-/* ---------- 4.2 Answering ---------- */
+/* ---------- answer stream ---------- */
 
 .answer {
-  max-width: 680px;
-  margin: 40px auto 0;
-  padding: 0 20px;
+  max-width: 720px;
+  margin: 36px auto 0;
+  padding: 0 24px;
+  text-align: left;
 }
 
 .skeleton { display: grid; gap: 12px; padding: 6px 0; }
 .skeleton i {
   display: block;
-  height: 16px;
+  height: 15px;
   border-radius: 8px;
   background: linear-gradient(90deg, var(--paper-sunken) 25%, #ece5d9 50%, var(--paper-sunken) 75%);
   background-size: 200% 100%;
@@ -225,15 +269,15 @@ main { min-height: 70vh; }
 
 .out {
   margin: 0;
-  font-size: 19px;
-  line-height: 1.8;
+  font-size: 17.5px;
+  line-height: 1.75;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .caret {
   display: inline-block;
   width: 9px;
-  height: 19px;
+  height: 18px;
   margin-left: 2px;
   vertical-align: text-bottom;
   background: var(--green);
@@ -253,7 +297,7 @@ main { min-height: 70vh; }
 }
 .answer-tools button,
 .answer-tools a {
-  min-height: 48px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   font-family: var(--f-ui);
@@ -272,31 +316,93 @@ main { min-height: 70vh; }
   color: var(--ink);
   background: var(--paper-sunken);
   border-radius: var(--r-sm);
-  padding: 14px 16px;
-  font-size: 16px;
+  padding: 13px 16px;
+  font-size: 15.5px;
+  text-align: left;
 }
 
-/* ---------- 4.3 Public answer page ---------- */
+/* ---------- gallery: content proof, not a feature grid ---------- */
+
+.gallery {
+  max-width: 880px;
+  margin: 84px auto 0;
+  padding: 0 24px;
+}
+.gallery-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.gallery-head h2 {
+  margin: 0;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+.gallery-head a { font-family: var(--f-ui); font-size: 14px; font-weight: 600; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .cards { grid-template-columns: 1fr; }
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: var(--paper-sunken);
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  color: var(--ink);
+  min-height: 48px;
+}
+.card:hover { border-color: var(--green); text-decoration: none; }
+.card h3 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.35;
+}
+.card p { margin: 0; color: var(--ink-soft); font-size: 14.5px; line-height: 1.6; }
+.card span {
+  margin-top: auto;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--green);
+}
+
+/* ---------- public answer page ---------- */
 
 .pub {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 56px 20px 0;
+  padding: 56px 24px 0;
 }
 .pub .q-head {
-  margin: 0 0 20px;
-  font-family: var(--f-display); /* Fraunces for Latin, Mukta catches Devanagari glyphs */
+  margin: 0 0 18px;
+  font-family: var(--f-display);
   font-weight: 600;
   font-size: clamp(26px, 5.4vw, 34px);
-  line-height: 1.4;
+  line-height: 1.35;
 }
-.pub .a-body { font-size: 19px; line-height: 1.8; white-space: pre-wrap; }
+.pub .a-body { font-size: 17.5px; line-height: 1.75; white-space: pre-wrap; }
 .pub .meta-line {
-  margin-top: 28px;
+  margin-top: 26px;
   padding-top: 14px;
   border-top: 1px solid var(--rule);
   font-family: var(--f-ui);
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--ink-soft);
 }
 .pub-cta {
@@ -306,38 +412,37 @@ main { min-height: 70vh; }
   border-radius: var(--r-lg);
   text-align: center;
 }
-.pub-cta p { margin: 0 0 16px; font-size: 18px; }
-.pub-cta .ask-btn { min-width: 140px; }
+.pub-cta p { margin: 0 0 16px; font-size: 17px; }
 
-/* ---------- 4.4 History & claim ---------- */
+/* ---------- history, claim, pricing, about ---------- */
 
 .narrow {
-  max-width: 420px;
+  max-width: 440px;
   margin: 0 auto;
-  padding: 9vh 20px 0;
+  padding: 9vh 24px 0;
   text-align: center;
 }
 .wide-list {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 48px 20px 0;
+  padding: 48px 24px 0;
 }
 .wide-list h1, .narrow h1 {
   font-family: var(--f-display);
   font-weight: 600;
   font-size: 30px;
-  line-height: 1.35;
+  line-height: 1.3;
   margin: 0 0 8px;
 }
 .hist-item {
   display: block;
-  padding: 16px 2px;
+  padding: 15px 2px;
   border-top: 1px solid var(--rule);
   color: var(--ink);
   min-height: 48px;
 }
 .hist-item:last-of-type { border-bottom: 1px solid var(--rule); }
-.hist-item span { display: block; color: var(--ink-soft); font-size: 15px; }
+.hist-item span { display: block; color: var(--ink-soft); font-size: 14px; }
 .hist-tools {
   display: flex;
   justify-content: space-between;
@@ -355,14 +460,12 @@ main { min-height: 70vh; }
   color: var(--green);
   cursor: pointer;
 }
-.ghost-note { color: var(--ink-soft); font-size: 16px; }
-
-/* ---------- 4.5 Pricing: rows on paper, not a card grid (§3.6) ---------- */
+.ghost-note { color: var(--ink-soft); font-size: 15.5px; }
 
 .plans {
-  max-width: 680px;
-  margin: 40px auto 0;
-  padding: 0 20px;
+  max-width: 720px;
+  margin: 36px auto 0;
+  padding: 0 24px;
 }
 .plan-row {
   display: grid;
@@ -373,14 +476,14 @@ main { min-height: 70vh; }
   align-items: baseline;
 }
 .plan-row:last-of-type { border-bottom: 1px solid var(--rule); }
-.plan-row h2 { margin: 0; font-family: var(--f-body); font-size: 21px; font-weight: 600; }
+.plan-row h2 { margin: 0; font-family: var(--f-body); font-size: 20px; font-weight: 600; }
 .plan-row .price {
   font-family: var(--f-display);
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 600;
   white-space: nowrap;
 }
-.plan-row p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--ink-soft); font-size: 16px; }
+.plan-row p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--ink-soft); font-size: 15.5px; }
 .plan-row button {
   grid-column: 1 / -1;
   justify-self: start;
@@ -398,37 +501,35 @@ main { min-height: 70vh; }
 }
 .plan-row button:hover { background: var(--green); color: var(--paper); }
 
-/* ---------- 4.7 About ---------- */
-
 .about {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 56px 20px 0;
+  padding: 56px 24px 0;
 }
 .about h1 {
   font-family: var(--f-display);
   font-weight: 600;
   font-size: clamp(28px, 6vw, 38px);
-  line-height: 1.3;
-  margin: 0 0 24px;
+  line-height: 1.25;
+  margin: 0 0 22px;
 }
 .about h2 {
   font-family: var(--f-ui);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   color: var(--ink-soft);
-  margin: 36px 0 6px;
+  margin: 34px 0 6px;
 }
 .about blockquote {
   margin: 8px 0;
   padding-left: 18px;
-  border-left: 2px solid var(--saffron); /* About's one saffron event */
+  border-left: 2px solid var(--saffron);
   font-family: var(--f-display);
-  font-size: 20px;
+  font-size: 19px;
   line-height: 1.7;
 }
-.deva-once { font-size: 22px; } /* अन्विक appears exactly once, here (§3.2) */
+.deva-once { font-size: 22px; }
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton i, .caret { animation: none; }

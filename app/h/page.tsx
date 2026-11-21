@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from "react";
 
-/** §4.4 History: device-local by default. Claiming into an account is §/claim. */
+/** §4.4 History: device-local by default. Claiming into an account is /claim. */
 
 type Item = { q: string; slug: string; at: number };
 
 function rel(at: number): string {
   const s = Math.floor((Date.now() - at) / 1000);
-  if (s < 60) return "अभी";
+  if (s < 60) return "just now";
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} मिनट पहले`;
+  if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} घंटे पहले`;
-  return `${Math.floor(h / 24)} दिन पहले`;
+  if (h < 24) return `${h} hr ago`;
+  return `${Math.floor(h / 24)} days ago`;
 }
 
 export default function History() {
@@ -41,11 +41,11 @@ export default function History() {
 
   return (
     <div className="wide-list">
-      <h1>आपका इतिहास</h1>
-      <p className="ghost-note">यह सूची इसी डिवाइस पर रहती है — कोई खाता नहीं, कोई सर्वर नहीं।</p>
+      <h1>Your history</h1>
+      <p className="ghost-note">This list lives on this device only — no account, no server copy.</p>
       {loaded && items.length === 0 ? (
         <p className="ghost-note">
-          अभी कुछ नहीं। <a href="/">पहला सवाल पूछें</a> — सूची यहाँ बनती जाएगी।
+          Nothing here yet. <a href="/">Ask your first question</a> and the list builds itself.
         </p>
       ) : (
         <>
@@ -56,13 +56,13 @@ export default function History() {
             </a>
           ))}
           <div className="hist-tools">
-            <a href="/claim">अपना इतिहास सभी डिवाइस पर सेव करें</a>
+            <a href="/claim">Save history across devices</a>
             <button
               onClick={() => {
-                if (confirm("पूरा इतिहास हटाएं? यह वापस नहीं आएगा।")) save([]);
+                if (confirm("Delete all history? This cannot be undone.")) save([]);
               }}
             >
-              सब हटाएं
+              Delete all
             </button>
           </div>
         </>

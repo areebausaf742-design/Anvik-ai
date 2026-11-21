@@ -38,14 +38,14 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return json({ message: "अनुरोध पढ़ा नहीं जा सका।" }, 400);
+    return json({ message: "Could not read that request." }, 400);
   }
   const question = String(body.question ?? "").trim();
   const idemKey = String(body.key ?? "");
 
-  if (question.length < 2) return json({ message: "पहले सवाल लिखिए।", code: "empty" }, 400);
+  if (question.length < 2) return json({ message: "Write a question first.", code: "empty" }, 400);
   if (question.length > 600)
-    return json({ message: "सवाल 600 अक्षरों से लंबा है — थोड़ा छोटा करके देखें।", code: "long" }, 413);
+    return json({ message: "That is over 600 characters — try a shorter question.", code: "long" }, 413);
 
   const lang: Lang = detectLanguage(question);
 
@@ -69,16 +69,16 @@ export async function POST(req: Request) {
       reasonCode: "jailbreak",
       action: "refused",
     });
-    return json({ message: "यह सवाल मैं इस तरह से जवाब नहीं दे सकता।", code: "refused" }, 403);
+    return json({ message: "I can’t answer that one the way you’re asking.", code: "refused" }, 403);
   }
 
   if (!rateOk(ip))
-    return json({ message: "बहुत तेज़! एक मिनट में 6 सवाल से ज़्यादा नहीं। एक साँस लें।", code: "rate" }, 429);
+    return json({ message: "Too fast — six questions a minute, max. Take a breath.", code: "rate" }, 429);
 
   const quotaLeft = await store.decrementQuota(deviceId);
   if (quotaLeft === null)
     return json(
-      { message: "आज के 3 मुफ़्त सवाल पूरे हो गए। कल सुबह फिर मिलते हैं — या ₹19 में 25 सवाल (भुगतान वीक 7 से)।", code: "quota" },
+      { message: "That’s all 3 free questions for today. Back tomorrow — or ₹19 for 25 (payments from Week 7).", code: "quota" },
       402,
     );
 
@@ -148,7 +148,7 @@ async function stream(
       } catch (e) {
         if ((e as Error).name === "AbortError") aborted = true;
         else {
-          send(controller, { t: "err", message: "जवाब अधूरा रह गया। एक बार फिर कोशिश करें।" });
+          send(controller, { t: "err", message: "The answer broke midway. Try once more." });
           controller.close();
           return;
         }

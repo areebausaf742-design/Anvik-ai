@@ -1,4 +1,4 @@
-export const metadata = { title: "अन्विक क्या है" };
+export const metadata = { title: "About Anvik" };
 
 /** §4.7: five sections, no imagery. अन्विक appears exactly once, here (§3.2). */
 export default function About() {
@@ -13,35 +13,39 @@ export default function About() {
         आश्रयः सर्वधर्माणां शाश्वतं अन्वीक्षिकी मता ॥
       </blockquote>
       <p>
-        कौटिल्य ने अन्वीक्षिकी को सभी विद्याओं का दीपक कहा — जाँचने की विद्या, जो बाक़ी सबको रोशन करती है।
-        इस उत्पाद का नाम उहीं से है।
+        &ldquo;Anvikshiki is the lamp of all the sciences, the means of all actions, and the
+        support of all dharma.&rdquo; — Kautilya, <em>Arthashastra</em>. The discipline of
+        inquiry: examining what follows from what. The product is named for it.
       </p>
 
-      <h2>यह क्या करता है</h2>
+      <h2>WHAT IT DOES</h2>
       <p>
-        एक खाने में हिंदी या हिंग्लिश में कोई भी सवाल लिखिए। जवाब पूरा मिलेगा, क्रम से, आपकी ही भाषा में —
-        और हर जवाब का अपना सार्वजनिक पेज होगा, जो आप किसी को भी भेज सकें। शुरू करने के लिए न खाता,
-        न कार्ड: रोज़ तीन सवाल मुफ़्त, हमेशा।
+        One field. Write any question in Hindi, Hinglish or English and get a full, ordered
+        answer in the language you asked in. Every answer gets its own public page you can
+        forward to anyone. No account and no card to start: three questions a day, free,
+        forever.
       </p>
 
-      <h2>यह किन सवालों का जवाब नहीं देगा</h2>
+      <h2>WHAT IT WILL NOT ANSWER</h2>
       <p>
-        कुछ सवालों के जवाब देना हमारा काम नहीं है: बीमारी की पहचान और दवा की खुराक (हम डॉक्टर और 108 की ओर
-        भेजते हैं), किसी मुक़दमे का नतीजा, किसी शेयर या स्कीम में पैसा लगाने की सलाह, और कोई भी ऐसा रास्ता
-        जिससे किसी को नुक़सान पहुँचे। जहाँ जवाब सीमित है, वहाँ हम साफ़ कहेंगे कि सीमा कहाँ है और सरकारी स्रोत कौन सा है।
+        Some questions are not ours to answer: diagnosing illness or dosing medicine (we route
+        to a doctor and to 108), predicting the outcome of a legal case, recommending a specific
+        stock, fund or investment, and any path that harms someone. Where an answer is limited,
+        we say where the limit is and name the official source.
       </p>
 
-      <h2>लागत, छिपी हुई नहीं</h2>
+      <h2>COST, NOT HIDDEN</h2>
       <p>
-        हर जवाब की अनुमानित लागत हम अपने खाते में लिखते हैं और उत्पाद की सीमाएँ उसी से तय होती हैं: रोज़ की एक
-        कुल छत, जिसके पार साइट सवाल लेना रोक देती है मगर सार्वजनिक जवाब पढ़े जाते रहते हैं। योजना का पूरा
-        लेखा-जोखा <code>docs/ANVIK-PLAN.md</code> में खुला पड़ा है।
+        Every answer&apos;s estimated cost is written to our own ledger in rupee paise, and the
+        product&apos;s limits are set by it: a global daily ceiling past which the site stops
+        taking questions but keeps serving every public answer. The full arithmetic lives in
+        the open in <code>docs/ANVIK-PLAN.md</code>.
       </p>
 
-      <h2>इंसान से बात</h2>
+      <h2>A HUMAN, IF YOU NEED ONE</h2>
       <p>
-        एक ईमेल: <a href="mailto:namaste@anvik.ai">namaste@anvik.ai</a> — हम देखते हैं, और दो कामकाजी दिन में
-        जवाब देने की कोशिश करते हैं। कोई फ़ॉर्म नहीं।
+        One address: <a href="mailto:namaste@anvik.ai">namaste@anvik.ai</a>. We read it, and we
+        try to answer within two working days. No form.
       </p>
     </div>
   );

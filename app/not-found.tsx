@@ -1,11 +1,11 @@
 export default function NotFound() {
   return (
     <div className="narrow">
-      <h1>यह पेज नहीं मिला</h1>
-      <p className="ghost-note">शायद पता बदल गया, या जवाब हटा दिया गया।</p>
-      <div className="ask-row" style={{ justifyContent: "center" }}>
+      <h1>This page isn&apos;t here</h1>
+      <p className="ghost-note">The address changed, or the answer was taken down.</p>
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 22 }}>
         <a className="ask-btn" style={{ display: "inline-flex", alignItems: "center" }} href="/">
-          सवाल पूछें
+          Ask a question
         </a>
       </div>
     </div>

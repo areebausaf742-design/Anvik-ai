@@ -207,6 +207,16 @@ Added 21 November 2026, from the two analysed screenshots (§3.7):
 
 What replaces the hero photograph: **real answers, in Devanagari, on the homepage.** Three actual question-and-answer pairs from the corpus, rendered as text. They are the only social proof Anvik will ever show, they cost nothing, they demonstrate the product doing its job in the user's own language, and they are impossible to fabricate because each links to its public URL (§4.3).
 
+**Owner amendments, 21 November 2026, after the first build was seen.** The first build shipped maximal restraint and it read as emptiness, not confidence: a bare field on an empty page is subtraction mistaken for parity. The owner's instruction stands — *the same class of product as the reference, none of its copied furniture* — and "same class" includes compositional richness. Four prohibitions above are therefore narrowed, not deleted, and the narrowing is itself a review criterion:
+
+- A **statement headline** above the composer is permitted ("Every question deserves a straight answer."). The ban that remains is on the marketing trio — headline → subheadline → *call-to-action buttons*. A headline above the task itself is not that trio. Verb-imperative copy syntax ("Build your ideas with…") remains banned.
+- **Suggestion chips** are permitted as *text-only* pills in the product's own voice. The ban that remains is on the icon-plus-label chip row with overflow chevron.
+- An **elevated composer panel** is permitted: paper surface, hairline border, our shadow, green focus ring. The bans that remain are on the gradient/rainbow hairline and on an interior icon cluster (attach/mode/mic/lucky).
+- A **content gallery** of real public answers is permitted below the fold as cards. The ban that remains is on the three-card *feature* grid with icons.
+- **Chrome language is English** by owner decision. This revises the Hindi-first *interface*; it does not revise §6.1 — the *answer* still comes back in the language the question was asked in, Devanagari leading and matra-safe whenever that language is Hindi. The product remains Hindi-*capable* first; it is no longer Hindi-*chrome* first.
+
+Everything else in the checklist stands, including no photograph anywhere and one saffron event per screen.
+
 ### 3.7 Reference anatomy — two screenshots, read closely
 
 Until 21 November 2026 the §3.6 checklist rested on a *description* of the reference set (Appendix B). Two screenshots are now in hand and have been analysed element by element: **Google AI Studio's Build screen** (`aistudio.google.com/apps`, Gemini 4 Neon era) and **Claude's sign-in** (`claude.ai/login`). Everything below is observed, not recalled.
