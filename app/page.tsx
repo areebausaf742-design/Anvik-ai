@@ -1,38 +1,26 @@
-import { store } from "@/lib/store";
-import Composer from "./composer";
+import Link from "next/link";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, AudioLines, Braces, Eye, Image as ImageIcon, MessageCircle, Orbit, Sparkles, WandSparkles } from "lucide-react";
+import Orb from "@/components/anvik/orb";
+import { Brand } from "@/components/anvik/navigation";
 
-export const dynamic = "force-dynamic";
+const features = [
+  { icon: MessageCircle, label: "01 / CONVERSATION", title: "A mind that meets you there.", text: "From the half-formed thought to the hard question. Talk it out, go deeper, get somewhere.", href: "/chat", tag: "CHAT" },
+  { icon: ImageIcon, label: "02 / IMAGE STUDIO", title: "Give the impossible a shape.", text: "Turn a sentence into a direction. Explore an idea in light, color and texture.", href: "/image", tag: "CREATE" },
+  { icon: Braces, label: "03 / CODE LAB", title: "Make the leap from idea to build.", text: "Think through architecture, write a first draft, and untangle the stubborn bug.", href: "/code", tag: "BUILD" },
+  { icon: AudioLines, label: "04 / VOICE", title: "Think out loud. Keep moving.", text: "Let a thought arrive in its own words. Speak naturally and bring it into your chat.", href: "/voice", tag: "SPEAK" },
+  { icon: Eye, label: "05 / VISION", title: "More than what meets the eye.", text: "Bring the details into focus. Ask about an image or document in your conversation.", href: "/chat", tag: "EXPLORE" },
+  { icon: Orbit, label: "06 / MEMORY", title: "Your ideas, still in orbit.", text: "Your conversations stay with you on this device, ready when you want to pick them up.", href: "/chat", tag: "REMEMBER" },
+];
 
-/**
- * Ask screen v3 (owner spec, 21 Nov): centred headline + one supporting line,
- * large rounded composer with the Ask button inside, four chips that FILL the
- * input, reviewed public answers below the fold. English-only chrome.
- */
 export default function Home() {
-  const recent = store.reviewedWithQuestions().slice(0, 3);
-  return (
-    <>
-      <section className="hero">
-        <h1>What can I help you with?</h1>
-        <p className="sub">One field, no account. The answer comes back in whatever language you write.</p>
-        <Composer />
-      </section>
-
-      <section className="gallery" aria-label="Reviewed public answers">
-        <div className="gallery-head">
-          <h2>REVIEWED PUBLIC ANSWERS</h2>
-          <a href="/about">how Anvik works</a>
-        </div>
-        <div className="cards">
-          {recent.map(({ answer, question }) => (
-            <a className="card" key={answer.id} href={`/j/${answer.slug}`}>
-              <h3>{question}</h3>
-              <p>{answer.body.split("\n")[0].slice(0, 110)}…</p>
-              <span>PUBLIC ANSWER</span>
-            </a>
-          ))}
-        </div>
-      </section>
-    </>
-  );
+  return <main className="landing-page">
+    <section className="hero-section" id="universe"><div className="hero-copy"><div className="eyebrow"><span className="eyebrow-light" /> YOUR NEXT THOUGHT STARTS HERE</div><h1>Meet ANVIK.<br /><span className="gradient-text">Your AI universe.</span></h1><p className="hero-description">One curious mind for whatever comes next. Make sense of a question, shape an idea, or start something you haven&apos;t seen before.</p><div className="hero-buttons"><Link className="button button-bright" href="/chat">Start exploring <ArrowUpRight aria-hidden="true" /></Link><a className="button button-quiet" href="#capabilities">Discover the universe <ArrowDownRight aria-hidden="true" /></a></div><div className="hero-meta"><span className="mini-presence"><i /></span> ONE SPACE FOR ALL YOUR CURIOSITY <span className="meta-divider">/</span> MADE FOR WHAT&apos;S NEXT</div></div>
+      <div className="hero-visual"><div className="orbit-label orbit-label-top"><span>ANVIK / 01</span><b>IDEAS IN MOTION</b></div><div className="orb-aura" /><Orb /><div className="float-note note-one"><span className="note-icon"><Sparkles /></span><span><b>One mind</b><small>many directions</small></span><span className="note-dot" /></div><div className="float-note note-two"><span className="signal-bars"><i /><i /><i /><i /></span><span><b>Always in flow</b><small>your next thought</small></span></div><div className="orbit-label orbit-label-bottom"><span>VIOLET / CYAN / POSSIBILITY</span><b>◌ &nbsp; ALWAYS BECOMING</b></div></div>
+    </section>
+    <div className="capability-ribbon" aria-label="ANVIK capabilities"><span>ONE MIND</span><i />CHAT<i />IMAGES<i />CODE<i />VOICE<i />VISION<i />IDEAS<span>INFINITE POSSIBILITIES</span></div>
+    <section className="section capabilities-section" id="capabilities"><div className="section-heading"><div><div className="eyebrow">A UNIVERSE, NOT A TOOLBOX</div><h2>One thought can<br /><span className="muted-heading">go anywhere.</span></h2></div><p>Six ways into the same creative current. Start with whatever is on your mind.</p></div><div className="feature-grid">{features.map(({ icon: Icon, label, title, text, href, tag }, i) => <Link className={`feature-card feature-card-${i + 1}`} key={label} href={href}><div className="feature-top"><span className="feature-icon"><Icon aria-hidden="true" /></span><span className="feature-label">{label}</span></div><div><span className="feature-tag">{tag} <ArrowUpRight aria-hidden="true" /></span><h3>{title}</h3><p>{text}</p></div></Link>)}</div></section>
+    <section className="section manifesto"><div className="manifesto-art"><div className="manifesto-ring ring-a"/><div className="manifesto-ring ring-b"/><div className="manifesto-core"><Brand compact /></div><span className="manifesto-coordinate">45° 31&apos; N<br />122° 40&apos; W</span><span className="manifesto-caption">A DIFFERENT KIND OF INTELLIGENCE</span></div><div className="manifesto-copy"><div className="eyebrow">NOT ANOTHER CHAT WINDOW</div><h2>There&apos;s more<br />to a thought <span className="gradient-text">than an answer.</span></h2><p>ANVIK is a place to wander productively. Follow a curiosity into a conversation, turn the conversation into a creation, and keep the parts you want to come back to.</p><Link href="/chat" className="text-link">Enter your universe <ArrowRight aria-hidden="true" /></Link></div></section>
+    <section className="section plans-section" id="plans"><div className="plans-inner"><div className="eyebrow">ROOM TO WANDER</div><h2>Start anywhere.<br /><span className="muted-heading">The rest unfolds.</span></h2><p className="plans-desc">Your universe is open. Start a conversation and see where it takes you.</p><Link href="/chat" className="button button-bright">Begin with a thought <ArrowUpRight aria-hidden="true" /></Link><span className="plans-footnote">NO SETUP REQUIRED <i /> YOUR HISTORY STAYS ON THIS DEVICE</span></div><div className="plans-orbit"><Orb size="small" /><span>∞</span></div></section>
+    <footer className="site-footer"><div className="footer-top"><Brand /><span className="footer-tagline">One Mind. Infinite Possibilities.</span><Link className="button button-small button-outline" href="/chat">Come on in <ArrowUpRight aria-hidden="true" /></Link></div><div className="footer-bottom"><span>© 2026 ANVIK AI</span><span>A SMALL UNIVERSE FOR BIG THOUGHTS</span><Link href="/settings">Privacy &amp; settings</Link></div></footer>
+  </main>;
 }

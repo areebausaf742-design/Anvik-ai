@@ -1,0 +1,7 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import Orb from "@/components/anvik/orb";
+import { Brand } from "@/components/anvik/navigation";
+import { ArrowRight, LockKeyhole } from "lucide-react";
+export const metadata: Metadata = { title: "Welcome", description: "Step into ANVIK AI." };
+export default function LoginPage() { return <main className="login-page"><div className="login-art"><Brand/><div className="login-art-center"><Orb/><span className="eyebrow">ONE MIND. INFINITE POSSIBILITIES.</span><blockquote>“The best ideas begin<br/>with a little curiosity.”</blockquote><span className="login-art-credit">A PLACE TO FOLLOW THE THREAD.</span></div><span className="login-art-coordinate">ANVIK SYSTEM / 01</span></div><section className="login-form-wrap"><div className="login-form"><div className="login-mobile-brand"><Brand/></div><div className="eyebrow">YOUR UNIVERSE AWAITS</div><h1>Welcome<br/><span className="gradient-text">to what&apos;s next.</span></h1><p>ANVIK is ready when you are. Start exploring—no account or setup required.</p><Link href="/chat" className="button button-bright login-continue">Continue to ANVIK <ArrowRight/></Link><div className="login-divider"><span/> A QUIETER KIND OF SIGN IN <span/></div><div className="login-privacy"><LockKeyhole/><p><b>Made for your curiosity, not your data.</b><br/>Your chat history lives in this browser. Account sign-in is not required.</p></div><Link className="login-back" href="/">Back to the beginning</Link></div></section></main>; }

@@ -1,42 +1,42 @@
-# Anvik-ai
+# ANVIK AI
 
-Ask anything — one field, no account, answers in the language you write.
+**One Mind. Infinite Possibilities.** A personal AI universe for conversation, image-making, code, and voice.
 
-The product plan lives in [`docs/ANVIK-PLAN.md`](docs/ANVIK-PLAN.md). Read it first;
-it is the source of truth for positioning, design tokens, the cost model and the
-ten-week schedule, and it records its own corrections and owner amendments (§0, §3.6).
+## What works
 
-## Run
+- Streaming AI conversations with Fast, Smart, Creative, and Coder modes through Vercel AI Gateway.
+- Local chat history, conversation search, prompt suggestions, voice dictation, and response copy.
+- Image Studio with live image generation through the Gateway image model.
+- Code Lab that streams code drafts and explanations.
+- Voice Mode using browser speech recognition (supported browsers will request microphone permission).
+- Adjustable response character and history controls.
+
+Conversation history and preferences are stored in local browser storage. This is a single-device experience; there is no account synchronization or authentication service configured. File selection in Chat currently records selected filenames in the prompt; file contents are not uploaded or analyzed.
+
+## Run locally
+
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
-npm run build
-npm run start        # http://localhost:3000
+cp .env.example .env.local
+npm run dev
 ```
 
-## Live model
+Open [http://localhost:3000](http://localhost:3000).
 
-Set **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) in server-side env only. With it set,
-`/api/ask` streams from the Gemini API (`streamGenerateContent?alt=sse`, 600-token
-output cap, identical cacheable system prompt). Without it, a deterministic corpus
-engine answers so the product stays demonstrable. The key never reaches the client:
-`lib/provider.ts` is imported only by the server route.
+Vercel deployments authenticate AI Gateway requests automatically. For local model access, set `AI_GATEWAY_API_KEY` in `.env.local` using a key from Vercel AI Gateway. Do not put provider credentials in browser code. `OPENAI_API_KEY` is included as a compatibility reference but the app does not read it; all model access is routed through AI Gateway.
 
-Optional: `ANVIK_MODEL` (default `gemini-2.5-flash`).
+## Deploy to Vercel
 
-## Guard rails enforced in /api/ask, in this order
+Import this repository in Vercel and deploy with the detected Next.js settings. The AI Gateway integration is connected to the project and supplies deployed model access. For local tests, add `AI_GATEWAY_API_KEY` to your untracked `.env.local` file.
 
-safety route → jailbreak refusal → rate limit → daily quota → **₹500/day global
-spend ceiling** → generation. New answers are public by URL but `noindex` until a
-human reviews them; the home gallery shows reviewed answers only.
-
-## Checks
+## Project checks
 
 ```bash
-npm test          # node:test via tsx — detection, slugs, quota race, ceiling, gallery gate
-npm run typecheck # tsc --noEmit
-npm run lint      # next lint
+npm test
+npm run typecheck
 npm run build
 ```
 
-State lives in `data/db.json` (gitignored) — delete it to reseed.
+The `/api/ask` and existing public-answer routes are retained from the original Anvik experience. The new application uses `/api/chat` and `/api/image`.
