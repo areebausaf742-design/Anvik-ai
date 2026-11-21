@@ -2,6 +2,7 @@
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   async headers() {
     return [{
       source: "/(.*)",
