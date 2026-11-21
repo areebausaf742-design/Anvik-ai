@@ -1,13 +1,20 @@
 /**
  * ANVIK learning — what the product remembers about *you*, and from you.
  *
- * Three stores, all in the browser first:
+ * Two stores, both in the browser:
  *   anvik-memory    name, preferred language, preferred answer style
  *   anvik-learning  likes, dislikes, and the corrections typed after a dislike
- *   anvik-cache     answered questions, replayed for 7 days at zero credits
  *
- * Nothing here is required for the app to work: every read falls back to an
- * empty store, so a browser with localStorage disabled still gets answers.
+ * What this file explicitly does NOT do is choose answers. Feedback is a record,
+ * not a lookup: a liked or corrected answer is never replayed in place of a
+ * fresh one from Gemini. Both were removed because a match by normalised text is
+ * not a match by meaning — "what is car?" must reach the model even if something
+ * similar was liked last week.
+ *
+ * Memory is the one thing that reaches the model: `memoryInstruction()` is a
+ * single prompt line about the user's name, language and preferred length.
+ * Nothing here is required for the app to work; a browser with localStorage
+ * disabled still gets every answer from Gemini.
  *
  * Privacy: text passes through `redact()` before it is written anywhere. Keys,
  * passwords, phone numbers, Aadhaar and card numbers never enter the store —
@@ -18,7 +25,6 @@ import { detectLanguage, type Lang } from "./detect";
 
 export const MEMORY_KEY = "anvik-memory";
 export const LEARNING_KEY = "anvik-learning";
-export const CACHE_KEY = "anvik-cache";
 
 /* ------------------------------------------------------------------ */
 /* types                                                               */
@@ -60,12 +66,10 @@ export type Correction = {
 export type Learning = {
   feedback: Feedback[];
   corrections: Correction[];
-  /** how many times a stored answer was replayed without a model call */
-  replays: number;
   updatedAt: number;
 };
 
-export const EMPTY_LEARNING: Learning = { feedback: [], corrections: [], replays: 0, updatedAt: 0 };
+export const EMPTY_LEARNING: Learning = { feedback: [], corrections: [], updatedAt: 0 };
 
 /* ------------------------------------------------------------------ */
 /* privacy filter                                                      */
@@ -205,7 +209,6 @@ export function readLearning(): Learning {
   return {
     feedback: Array.isArray(raw.feedback) ? raw.feedback.filter(isFeedback) : [],
     corrections: Array.isArray(raw.corrections) ? raw.corrections.filter(isCorrection) : [],
-    replays: typeof raw.replays === "number" ? raw.replays : 0,
     updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
   };
 }
@@ -235,7 +238,9 @@ export function clearLearning(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(LEARNING_KEY);
-    window.localStorage.removeItem(CACHE_KEY);
+    // Older builds kept an answer cache here; remove it so nothing stale can
+    // ever be mistaken for an answer again.
+    window.localStorage.removeItem("anvik-cache");
   } catch {
     /* ignore */
   }
@@ -360,117 +365,6 @@ export function mirrorLearning(input: {
 }
 
 /* ------------------------------------------------------------------ */
-/* replay: a liked answer is free forever                              */
-/* ------------------------------------------------------------------ */
-
-export type Replay = {
-  answer: string;
-  /** "learning" when taught or liked, "cache" when merely cached */
-  source: "learning" | "cache";
-  savedAt: number;
-};
-
-/**
- * Look for an answer we already have. Taught corrections win over likes,
- * because a correction is the user telling us the previous answer was wrong.
- */
-export function findReplay(question: string, mode = "smart"): Replay | null {
-  if (typeof window === "undefined") return null;
-  const normalized = normalizeQuestion(question);
-  if (normalized.length < 4) return null;
-  const learning = readLearning();
-
-  const corrected = [...learning.corrections]
-    .reverse()
-    .find((item) => normalizeQuestion(item.question) === normalized);
-  if (corrected?.correction?.trim()) {
-    markReplay();
-    return { answer: corrected.correction, source: "learning", savedAt: corrected.createdAt };
-  }
-
-  const liked = [...learning.feedback]
-    .reverse()
-    .find((item) => item.verdict === "like" && normalizeQuestion(item.question) === normalized);
-  if (liked?.answer?.trim()) {
-    markReplay();
-    return { answer: liked.answer, source: "learning", savedAt: liked.createdAt };
-  }
-
-  const cached = readCacheEntry(normalized, mode);
-  if (cached) {
-    markReplay();
-    return { answer: cached.answer, source: "cache", savedAt: cached.createdAt };
-  }
-
-  return null;
-}
-
-function markReplay(): void {
-  const learning = readLearning();
-  learning.replays += 1;
-  writeLearning(learning);
-}
-
-/* ------------------------------------------------------------------ */
-/* answer cache (7 days)                                              */
-/* ------------------------------------------------------------------ */
-
-export type StoredAnswer = {
-  key: string;
-  question: string;
-  answer: string;
-  lang: Lang;
-  mode: string;
-  createdAt: number;
-  hits: number;
-};
-
-export const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
-
-function readCache(): StoredAnswer[] {
-  const raw = readJson<StoredAnswer[]>(CACHE_KEY, []);
-  return Array.isArray(raw) ? raw.filter((item) => item && typeof item.answer === "string") : [];
-}
-
-export function readCacheEntry(normalizedQuestion: string, mode: string, now = Date.now()): StoredAnswer | null {
-  const found = readCache().find(
-    (item) => normalizeQuestion(item.question) === normalizedQuestion && item.mode === mode,
-  );
-  if (!found) return null;
-  return now - found.createdAt < CACHE_TTL && found.answer.trim() ? found : null;
-}
-
-export function saveAnswer(input: {
-  question: string;
-  answer: string;
-  lang: Lang;
-  mode: string;
-}): void {
-  if (typeof window === "undefined") return;
-  const question = redact(input.question).text;
-  if (question.trim().length < 4 || input.answer.trim().length < 12) return;
-  const normalized = normalizeQuestion(question);
-  const entries = readCache().filter(
-    (item) => !(normalizeQuestion(item.question) === normalized && item.mode === input.mode),
-  );
-  entries.push({
-    key: normalized,
-    question,
-    answer: input.answer,
-    lang: input.lang,
-    mode: input.mode,
-    createdAt: Date.now(),
-    hits: 0,
-  });
-  // keep the newest 120 answers; this fits comfortably in a 5 MB quota
-  writeJson(CACHE_KEY, entries.slice(-120));
-}
-
-export function cacheCount(now = Date.now()): number {
-  return readCache().filter((item) => now - item.createdAt < CACHE_TTL).length;
-}
-
-/* ------------------------------------------------------------------ */
 /* prompt injection                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -508,7 +402,6 @@ export type LearningStats = {
   likes: number;
   dislikes: number;
   corrections: number;
-  replays: number;
   topTopics: { topic: string; count: number }[];
   bestReplies: { question: string; answer: string; at: number }[];
 };
@@ -534,7 +427,6 @@ export function learningStats(learning: Learning = readLearning()): LearningStat
     likes: learning.feedback.filter((item) => item.verdict === "like").length,
     dislikes: learning.feedback.filter((item) => item.verdict === "dislike").length,
     corrections: learning.corrections.length,
-    replays: learning.replays,
     topTopics,
     bestReplies,
   };

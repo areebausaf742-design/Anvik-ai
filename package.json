@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "node --import tsx --test tests/*.test.ts",
-    "measure": "node --import tsx scripts/measure-credits.ts"
+    "verify:chat": "node --import tsx scripts/verify-chat.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.124",

@@ -3,8 +3,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { ModeId } from "@/lib/prompts";
 
 export type MessageMeta = {
-  /** how the answer was produced: local, cache, corpus, model */
-  source?: "local" | "cache" | "learning" | "corpus" | "model";
+  /** every answer comes from the model; kept for old stored messages */
+  source?: "gemini";
   /** the checker's verdict; absent means it was not checked */
   checked?: boolean;
   /** the checker had to repair or regenerate the answer */
