@@ -177,7 +177,7 @@ Rules, in force:
 
 ### 3.6 The "not copied" checklist
 
-Derived from the reference analysis. Each item below was the strongest copy-signal in that set, and each is a **blocking review criterion** — a design that contains one does not ship, regardless of how good it otherwise looks.
+Derived from the reference analysis — and since 21 November 2026, from two screenshots read element by element in §3.7: **Google AI Studio's Build screen** and **Claude's sign-in**. Each item below is a copy-signal observed in that set, and each is a **blocking review criterion** — a design that contains one does not ship, regardless of how good it otherwise looks.
 
 - [ ] **No hero photograph.** This was the single strongest copy-signal in the reference set, and it is also the right call for a text product: a stock photo of a person typing tells Ramesh nothing and costs 200 KB on a 4G connection. The ask field *is* the hero — it is the largest element on the page and the first thing in the DOM.
 - [ ] No centred headline → subheadline → two-button stack.
@@ -191,7 +191,80 @@ Derived from the reference analysis. Each item below was the strongest copy-sign
 - [ ] No fabricated social proof — no invented user counts, no stock testimonial headshots.
 - [ ] No "As seen in" bar.
 
+Added 21 November 2026, from the two analysed screenshots (§3.7):
+
+- [ ] No floating white composer card with an action row *inside* it (AI Studio).
+- [ ] No gradient or rainbow hairline, glow or sheen on any surface (AI Studio).
+- [ ] No launch or announcement pill above a headline (AI Studio).
+- [ ] No horizontal row of icon-plus-label suggestion chips (AI Studio).
+- [ ] No left-rail navigation on any public screen. Anvik's chrome is the wordmark plus one link (AI Studio).
+- [ ] **No photograph anywhere in the product, including sign-in.** Standing directive, and Claude's strongest single signal (Claude).
+- [ ] No two-column split with a media panel on one side (Claude).
+- [ ] No stacked social login buttons, and no "OR" divider between them (Claude).
+- [ ] No serif-display headline paired with a serif subline on product screens. Fraunces never sits above a serif subline (Claude).
+- [ ] No black commit button on paper. Commit is `--green` (Claude).
+- [ ] No verb-imperative headline syntax — "Build your ideas with…", "Question what's next" (both).
+
 What replaces the hero photograph: **real answers, in Devanagari, on the homepage.** Three actual question-and-answer pairs from the corpus, rendered as text. They are the only social proof Anvik will ever show, they cost nothing, they demonstrate the product doing its job in the user's own language, and they are impossible to fabricate because each links to its public URL (§4.3).
+
+### 3.7 Reference anatomy — two screenshots, read closely
+
+Until 21 November 2026 the §3.6 checklist rested on a *description* of the reference set (Appendix B). Two screenshots are now in hand and have been analysed element by element: **Google AI Studio's Build screen** (`aistudio.google.com/apps`, Gemini 4 Neon era) and **Claude's sign-in** (`claude.ai/login`). Everything below is observed, not recalled.
+
+#### R1 — Google AI Studio, Build
+
+Composition, top to bottom: a fixed ~240px left rail (wordmark; `EXPLORE` / `BUILD` / `MANAGE` in ~11px caps; ~40px rows; the selected row a grey pill fill; an account chip at the bottom) → a centred column holding: a launch pill (circular gradient avatar + "Gemini 4 Neon is here") → a ~48px sans headline at weight ~400 → a composer card (~880px wide, radius ~16px, white, hairline border, soft ambient shadow, and a **faint multi-colour gradient hairline along its top edge**) with the placeholder top-left and an *interior* action row (circular +, a "Max mode" pill, a mic button, "✦ I'm feeling lucky") → a row of white icon-plus-label chips with an overflow chevron → below the fold: "Explore apps built with…" with a right-aligned gallery link.
+
+Type: one sans family at three sizes (11 caps / 14 / 48). Hierarchy is carried by size and whitespace, never by weight. Colour: a grey monochrome with exactly two colour events — the gradient avatar and the rainbow hairline — plus the small chip icons.
+
+Why it works: (1) **the input is the hero** — the largest object on the page is where you type; (2) every secondary affordance lives *inside* the composer, so chrome never competes with the task; (3) blank-page fear is solved twice, by chips (what could I ask?) and by the gallery (what has this made?), both *below* the field; (4) the launch pill dates the page without a banner; (5) roughly eight interactive elements above the fold, and not one more.
+
+#### R2 — Claude, sign-in
+
+Composition: a warm paper canvas (~`#f2f0ec`); the wordmark alone top-left (starburst glyph + serif name); two vertically centred columns at roughly 46/54. Left column: a ~64px old-style serif headline, a ~20px serif subline, then a floating white card (radius ~16px, shadow, no border) holding two stacked grey social buttons with brand glyphs, an 11px "OR", a grey email field, and the page's only high-contrast object — a black commit button; one secondary button sits outside the card. Right column: a full-height rounded **photograph** — candid, desaturated teal and khaki, a person buried under real paper mess.
+
+Type: serif carries meaning (display and subline); sans appears only inside controls. That split is the signature. Colour: paper, ink, and the photo. Zero brand-colour moments; even the starburst is ink.
+
+Why it works: (1) three materials, three jobs — the photo carries emotion, the type carries meaning, the controls carry action, with no overlap; (2) paper plus serif borrows print's authority; (3) the card floats on shadow rather than border, and softness reads as premium; (4) the black commit button is the single contrast event on the page, so commitment is unmistakable; (5) the *mess* in the photo is the message — real work, not demo work; (6) the photo's palette is the only saturated colour anywhere, which is why the page reads calm rather than empty.
+
+#### What the two share — the actual lesson
+
+1. One job per screen; nothing else gets oxygen.
+2. The primary input is the largest, highest-contrast interactive element; everything else is ghost, hairline or grey.
+3. Whitespace is the structure: no boxes, no dividers above the fold.
+4. Type confidence: one display family plus one UI family, three to four sizes, no shouting via weight.
+5. Proof and secondary content strictly below the fold.
+6. Exactly **one colour event per screen**; the rest is paper, ink and grey.
+7. Floating cards use shadow, not border; hairlines are for pills and rules only.
+8. Nothing above the fold but a headline and at most one subline. No marketing.
+
+#### Parity ladder — where "same" is non-negotiable
+
+Field focused on load with no interstitial · one unmistakable primary action · no more than ten interactive elements above the fold · display type with real presence at mobile sizes · a consistent soft-shadow language · proof below the fold · first paint that feels instant (skeleton ≤150ms, §4.2).
+
+#### Beat ladder — where "better" is achievable and specific
+
+1. **Weight.** Both shells are multi-hundred-kilobyte SPAs; Claude adds a 200–400 KB photograph. Anvik's ask route ships ≤120 KB of JS and **no image above the fold at all** (§4.1): interactive on 4G in seconds rather than tens of seconds. This is the beat their own users would feel.
+2. **Value before identity.** Both gate first value behind a Google or Apple account. Anvik answers before it knows who asked (§4.1).
+3. **Proof that compounds.** Their below-fold proof is a vendor gallery. Anvik's is real neighbours' questions with real answers, each one a public indexable URL (§4.3).
+4. **Script-native type.** Both render Devanagari as a Latin system's fallback. Anvik's type system is Devanagari-first (§3.4) — matra-safe leading, mixed script without a seam. A Latin-first type system cannot match it.
+5. **Price honesty in the same screen.** *"आज 3 सवाल बाकी"* on the ask screen (§4.1), against subscriptions hidden behind a login.
+6. **Emotion without imagery.** Claude buys its feeling with one expensive photograph. Anvik's feeling is real Devanagari answers set on paper — cheaper, truer, and impossible to clone because it *is* the corpus.
+
+#### Translation table — principle, their expression (refused), Anvik's expression
+
+| Principle | AI Studio's expression — refused | Claude's expression — refused | Anvik's expression |
+| --- | --- | --- | --- |
+| The input is the hero | Floating white composer card with rainbow hairline | — | No card: the field is a rule on paper; the ink hairline thickens to `--green` on focus |
+| Affordances travel with the input | +, mode, mic and lucky inside the composer | — | Nothing inside; launch has no mode, mic or attach to hide |
+| Beat blank-page fear | Icon-chip row with overflow chevron | — | Three real corpus questions as Devanagari text links (§4.1) |
+| One colour event | Gradient hairline plus avatar | The photograph | Home: one saffron stroke under the wordmark. Elsewhere: the saffron focus underline. One per screen (§3.3) |
+| Editorial calm | — | Paper plus serif plus sans controls | Paper plus ink; Fraunces only as wordmark, About and public question headline; Mukta for everything read; Manrope for controls (§3.4) |
+| Soft float | Composer shadow | Card shadow | Only the answer card floats (§3.5); the field never floats |
+| Unmistakable commit | Bordered pill inside the composer | Black button on paper | `--green`, 56px, Devanagari label **पूछें** (§4.1) |
+| Sign-in feeling | — | Full-height photo panel | No photograph, ever. The §4.4 claim state |
+
+A note on §4.1 worth defending in review: it has **no headline above the field**, which is more radical than either reference and correct. Both put a headline above their input, and both thereby admit the input needed an introduction. Anvik's field introduces itself with a rotating Devanagari placeholder and three real questions. Do not add a headline to it.
 
 ---
 
@@ -256,6 +329,8 @@ Not a separate screen — a state of 4.1. Streaming into the field's answer area
 - List view: question, first line of answer, relative date in Hindi (*"3 दिन पहले"*).
 - Per-item: open, share, delete. Bulk delete all.
 - Deletion is real: purges the row, and if the answer was public, unpublishes it (§6.4).
+
+**Claim state — the screen that will be compared to Claude's login.** Sign-in exists only to claim device history into an account, so it is a *state* of this screen rather than an eighth screen, and it is designed to be calmer than the reference without borrowing a pixel of it (§3.7, R2): a single centred column, max-width 420px, directly on paper — the wordmark; one line of reason in Mukta (*"अपना इतिहास सभी डिवाइस पर देखें"*); one 48px OTP or magic-link field drawn as an ink hairline; one green commit button; one *"बाद में"* text link back. **No social buttons** — a Google/Apple stack is both a copy-signal and an assumption Ramesh does not need. **No floating card, no photograph, no serif subline under a serif headline.** Everything sits on paper between two hairline rules. If a reviewer says it feels like Claude's login, the intended answer is: same calm, none of the furniture.
 
 ### 4.5 Pricing & quota (`/pricing`)
 
@@ -650,7 +725,7 @@ Everything quantitative in this document was checked on 21 November 2026 rather 
 
 So no one mistakes confidence for evidence later:
 
-- **The reference set** behind the §3.6 "not copied" checklist is not in this repository and could not be inspected. The checklist is written from the brief's description of it. The **no-hero-photograph** rule is retained because it is independently correct for a text product on a 4G connection (§3.6), not because the reference analysis was confirmed.
+- **The reference set** behind the §3.6 checklist was, until 21 November 2026, known only from the brief's description. Two screenshots are now in hand and are analysed element by element in §3.7: Google AI Studio's Build screen and Claude's sign-in. Checklist items attributable to those two are evidence-based. Items from the brief's wider set that these two do not exhibit — bento grids, glassmorphism, dark-mode-with-neon — remain unverified against sources nobody in this session has seen. The **no-photograph** rule is now doubly grounded: observed as Claude's strongest single signal, and independently correct for a text product on a 4G connection (§3.6).
 - **The four CafeCaption patterns** in §5.3 are unverified prior art (§0.2). Each is specified from first principles here.
 - **Ramesh** (§2.5) is a constructed persona, not research. Week 8 replaces him with 25 real people, and everything in §2 and §4 should be considered provisional until then.
 - **Answer-quality assumptions** for Hindi on Flash-class models are untested. Week 1 and Week 4 test them, and Week 4's human review is the one that matters.
